@@ -1,0 +1,37 @@
+# Production reverse proxy. {$DOMAIN} must be a real, publicly
+# resolvable domain name pointing at this host - Caddy then handles HTTPS
+# automatically (Let's Encrypt acquisition + renewal + HTTP->HTTPS
+# redirect), no extra config needed.
+#
+# WebSocket upgrades (the app's /ws endpoint) are proxied transparently by
+# reverse_proxy with no special directive required.
+#
+# Local testing: setting DOMAIN=localhost makes Caddy use its internal
+# (self-signed) CA instead of attempting real Let's Encrypt issuance - see
+# docs/deployment.md's "Local HTTPS validation" section.
+#
+# Multi-replica load balancing: `reverse_proxy web:8000` (a single,
+# literal upstream address) was verified LIVE to NOT load-balance across
+# `docker compose up --scale web=N` replicas - Caddy resolves a plain
+# hostname upstream once and keeps using that one resolved address for
+# the life of the process, so every request kept landing on the same
+# replica no matter how many were healthy (in a live reproduction,
+# 20/20 requests hit replica 1, 0/20 hit replica 2). `dynamic a` is
+# Caddy's own built-in DNS-based dynamic-upstream source: it re-resolves the `web` service name every
+# `refresh` interval and treats EVERY A record Docker's embedded DNS
+# returns (one per healthy replica) as a separate load-balanced upstream -
+# this is what actually makes `--scale web=N` traffic spread across all N
+# replicas, still using only the existing Caddy already in this stack (no
+# new proxy/platform). `refresh 5s` keeps that view of "which replicas
+# exist" reasonably current for a scale-up/scale-down without re-resolving
+# on literally every single request. `lb_policy round_robin` is explicit
+# (rather than relying on Caddy's `random` default) so traffic
+# distribution across replicas is deterministic and easy to verify.
+{$DOMAIN} {
+	reverse_proxy {
+		dynamic a web 8000 {
+			refresh 5s
+		}
+		lb_policy round_robin
+	}
+}

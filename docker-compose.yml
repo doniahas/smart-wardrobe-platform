@@ -1,0 +1,248 @@
+services:
+  web:
+    build: ./services/web
+    # Horizontal scaling: no fixed container_name here (unlike every other
+    # service below) - Docker requires a unique container name per
+    # container, so a fixed name structurally blocks
+    # `docker compose up --scale web=N` for N>1 ("Docker requires each
+    # container to have a unique name. Remove the custom name to scale
+    # the service"). Compose still gives each replica a stable,
+    # predictable name on its own (`<project>-web-1`, `<project>-web-2`,
+    # ...), so `docker compose logs web` / `docker compose exec web ...` /
+    # `docker compose ps` work as documented. A single, unscaled
+    # `docker compose up -d` (the normal local/dev workflow) is unaffected.
+    stop_grace_period: 45s
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Overrides the plain env_file value with the authenticated form,
+      # assembled from the same MONGO_ROOT_USERNAME/PASSWORD the mongo
+      # service below uses to create this user.
+      - MONGO_URI=mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/?authSource=admin
+      # Shared Redis (see docs/architecture.md's "Shared, replica-safe
+      # rate limiting"): shared Redis
+      # instance reached over the Docker network by its compose service
+      # name below - same pattern as MONGO_URI above. Listed explicitly
+      # here (unlike LLM_SERVICE_URL/RECOMMENDATION_SERVICE_URL/
+      # CATALOG_SERVICE_URL, which rely on core/config.py's own default)
+      # purely for visibility of this dependency; the value is
+      # identical to that default.
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./services/web/uploads:/app/uploads
+    depends_on:
+      mongo:
+        condition: service_healthy
+      recommendation:
+        condition: service_started
+      llm:
+        condition: service_started
+      catalog:
+        # web calls catalog defensively (see
+        # services/web/app/services/catalog_gateway.py) and degrades
+        # gracefully if it's unreachable, so a slow/broken catalog
+        # container must never block web from starting - matching the
+        # llm/recommendation gating above, not mongo's service_healthy gate.
+        condition: service_started
+      redis:
+        # Same gating as llm/catalog above, not mongo's service_healthy
+        # gate: core/limiter.py's shared rate limiting is designed to
+        # degrade to a per-process in-memory fallback if Redis is
+        # unreachable (see services/web/app/core/limiter.py's own
+        # comment), so a slow/broken redis container must never block
+        # web from starting.
+        condition: service_started
+    networks:
+      - smartwardrobe-net
+    # Healthcheck: lets Compose (and any dependent service's `depends_on:
+    # condition: service_healthy`) know web is actually ready to serve
+    # traffic, not merely started. Same pattern/timing as recommendation/
+    # llm/catalog below, reusing the existing GET /health route.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  recommendation:
+    build: ./services/recommendation
+    container_name: smartwardrobe_recommendation
+    env_file:
+      - .env
+    networks:
+      - smartwardrobe-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  llm:
+    build: ./services/llm
+    container_name: smartwardrobe_llm
+    # Least privilege: an earlier version of this block
+    # used `env_file: [.env]` so OLLAMA_GENERATE_TIMEOUT_SECONDS and
+    # OLLAMA_KEEP_ALIVE (documented in .env.example) would actually reach
+    # this container instead of silently falling back to services/llm's
+    # hardcoded defaults. That fixed the immediate gap but over-broadly
+    # exposed every OTHER service's .env values (MONGO_*, JWT_SECRET,
+    # RATE_LIMIT_*, etc.) to a container that needs none of them - the llm
+    # service only ever reads the OLLAMA_* keys below via os.getenv (see
+    # services/llm/app/core/config.py). So: no env_file at
+    # all here; each variable this service actually needs is passed
+    # explicitly, with Compose's own `${VAR:-default}` substitution reading
+    # the same root .env file for its value (Compose reads .env for
+    # variable substitution regardless of any env_file directive) while
+    # only ever injecting these five specific keys into the container.
+    environment:
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
+      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-moondream:latest}
+      - OLLAMA_GENERATE_TIMEOUT_SECONDS=${OLLAMA_GENERATE_TIMEOUT_SECONDS:-60.0}
+      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-30m}
+    networks:
+      - smartwardrobe-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  catalog:
+    build: ./services/catalog
+    container_name: smartwardrobe_catalog
+    # Brings this service in line with recommendation/llm/web -
+    # lets CATALOG_MAX_CONCURRENCY/CATALOG_MAX_ATTEMPTS/etc. (see
+    # services/catalog/app/core/config.py) be tuned via .env like every
+    # other service's settings, instead of only via hardcoded defaults.
+    # catalog itself needs none of the other services' variables, and vice
+    # versa - env_file only makes the listed variables available if a
+    # container's own os.getenv() reads them, so this is inert for anything
+    # else.
+    env_file:
+      - .env
+    networks:
+      - smartwardrobe-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: smartwardrobe_ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - smartwardrobe-net
+
+  # Shared Redis (see docs/architecture.md's "Shared, replica-safe rate
+  # limiting"): shared, internal-
+  # only backend for web's rate-limit counters (services/web/app/core/
+  # limiter.py), so multiple web replicas enforce one combined ceiling per
+  # client key instead of one independent counter per replica. The same
+  # instance also backs cross-replica WebSocket live-event Pub/Sub
+  # (services/web/app/services/live.py) - see docs/architecture.md's
+  # "Cross-replica live WebSocket notification delivery". No ports: entry,
+  # matching every other internal
+  # service in this file (recommendation/llm/catalog/mongo/ollama) and the
+  # architecture's "only the web service is exposed to external users"
+  # principle. No persistent volume: neither Pub/Sub (fire-and-forget by
+  # design) nor rate-limit counters (a counter reset by a restart only
+  # ever loosens limiting temporarily, never a correctness/security
+  # concern) need to survive a Redis restart.
+  redis:
+    image: redis:7-alpine
+    container_name: smartwardrobe_redis
+    networks:
+      - smartwardrobe-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  mongo:
+    image: mongo:7
+    container_name: smartwardrobe_mongo
+    environment:
+      # Only takes effect on a completely empty /data/db (a fresh
+      # deployment's first boot) - on an already-populated
+      # volume the image's entrypoint silently ignores these, which is why
+      # `command: ["mongod", "--auth"]` below exists as the second,
+      # volume-independent mechanism that actually turns on enforcement.
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    command: ["mongod", "--auth"]
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - smartwardrobe-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Automatic cold-seed: a fresh local install starts with a few demo
+  # users, posts, and comments, so the forum is never empty on first look.
+  # One-shot container - reuses the `web` image (already has
+  # httpx, see services/web/requirements.txt) and runs the existing,
+  # unmodified scripts/seed_demo_data.py against the real running `web`
+  # HTTP API. No direct Mongo writes, no new seeding logic here - this
+  # service only decides *whether/when* the existing script runs.
+  #
+  # SEED_DEMO_DATA defaults to true for local/dev (this file) and is
+  # hard-disabled in docker-compose.prod.yml, so production is never
+  # seeded regardless of what a deployment's own .env contains (Compose
+  # merges `environment` per-key across -f files, so the prod override
+  # always wins - see that file's comment).
+  #
+  # seed_demo_data.py is idempotent (per-object reconciliation, never a
+  # global "already seeded" shortcut - see its own module docstring), so
+  # re-running it on every `docker compose up -d` (Compose restarts an
+  # already-exited one-shot container from scratch) is safe: it converges
+  # to the same seeded state without duplicating anything or touching real
+  # user data.
+  seed:
+    build: ./services/web
+    container_name: smartwardrobe_seed
+    environment:
+      - SEED_DEMO_DATA=${SEED_DEMO_DATA:-true}
+    volumes:
+      - ./scripts:/scripts:ro
+    depends_on:
+      web:
+        # web has a real healthcheck (see that service's
+        # definition above), so seed can wait for web to be actually ready
+        # rather than merely started. seed_demo_data.py's own _wait_for_web
+        # retry/backoff stays in place regardless, as defense-in-depth for
+        # the gap between "healthcheck passed" and "still fully warmed up".
+        condition: service_healthy
+    networks:
+      - smartwardrobe-net
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        if [ "$$SEED_DEMO_DATA" = "true" ]; then
+          python /scripts/seed_demo_data.py --base-url http://web:8000
+        else
+          echo "SEED_DEMO_DATA=false - skipping automatic cold seed"
+        fi
+
+volumes:
+  mongo_data:
+  ollama_data:
+
+networks:
+  smartwardrobe-net:
+    driver: bridge

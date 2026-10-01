@@ -1,0 +1,40 @@
+{
+  "products": [
+    {
+      "id": 111111,
+      "handle": "classic-tee",
+      "title": "Classic Cotton T-Shirt",
+      "product_type": "Tops",
+      "variants": [
+        {"id": 1, "price": "59.90", "available": true},
+        {"id": 2, "price": "49.90", "available": true},
+        {"id": 3, "price": "39.90", "available": false}
+      ],
+      "images": [{"src": "https://cdn.example-shopify-test.com/files/tee.jpg"}]
+    },
+    {
+      "id": 222222,
+      "handle": "skirt-hebrew",
+      "title": "חצאית כיווץ משבצות",
+      "product_type": "shirts",
+      "variants": [{"id": 4, "price": "189.00", "available": true}],
+      "images": []
+    },
+    {
+      "id": 333333,
+      "handle": "black-dress",
+      "title": "שמלה שחורה",
+      "product_type": null,
+      "variants": [{"id": 5, "price": "220.00", "available": true}],
+      "images": ["https://cdn.example-shopify-test.com/files/dress.jpg"]
+    },
+    {
+      "id": 444444,
+      "handle": "leather-belt",
+      "title": "Woven Leather Belt",
+      "product_type": "Accessories",
+      "variants": [{"id": 6, "price": "35.00", "available": true}],
+      "images": [{"src": "https://cdn.example-shopify-test.com/files/belt.jpg"}]
+    }
+  ]
+}

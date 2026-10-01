@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Wardrobe</title>
+  <!-- Inline SVG data-URI favicon (UI polish pass) - a serif "S" monogram
+       using the same --hero-bg/--text-inv tokens as the header/hero, so
+       the browser tab never shows a blank/default icon. No new file, no
+       network dependency, matches the existing "no external asset
+       dependency" principle established for typography below. -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23302D29'/%3E%3Ctext x='50' y='68' font-family='Georgia,serif' font-size='58' fill='%23F5F0E8' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+  <!-- Deliberately no external font network dependency - typography uses
+       a curated system-font stack (see style.css's :root) so the app's
+       visual identity never depends on reaching Google Fonts. See
+       docs/architecture.md's "Frontend" section. -->
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+  <!-- ── Wardrobe Door Intro (purely decorative, see app.js) ──────── -->
+  <div id="wardrobe-intro" class="wardrobe-intro" aria-hidden="true">
+    <div class="wardrobe-intro-door wardrobe-intro-door--left"><span class="wardrobe-intro-handle"></span></div>
+    <div class="wardrobe-intro-door wardrobe-intro-door--right"><span class="wardrobe-intro-handle"></span></div>
+    <button type="button" id="wardrobe-intro-skip" class="wardrobe-intro-skip">Skip Intro</button>
+  </div>
+
+  <!-- ── Global Header ──────────────────────────────────────────────
+       Nav order per the header reorg: Dashboard, Stylist, Explore,
+       Messages - id="nav-chat"/onclick="showChatTab()" are unchanged
+       (only the visible label moved from "AI Chat" to "Stylist"), so the
+       existing nav ids/handlers and the frontend-protecting tests that
+       assert them are untouched. Account controls (bell + username) are
+       grouped on the far right via #user-bar's own space-between layout;
+       Sign Out moved from an always-visible button into the username's
+       dropdown (see app.js::toggleAccountMenu) - same logout(), no new
+       auth behavior. ──────────────────────────────────────────────── -->
+  <header class="site-header">
+    <div class="container">
+      <div class="header-row">
+        <div class="logo">Smart Wardrobe</div>
+        <div id="user-bar" class="user-bar hidden">
+          <nav class="nav-tabs">
+            <button type="button" class="nav-tab active" id="nav-dashboard" onclick="showDashboard()">Dashboard</button>
+            <button type="button" class="nav-tab" id="nav-chat" onclick="showChatTab()">Stylist</button>
+            <button type="button" class="nav-tab" id="nav-explore" onclick="showExploreTab()">Explore</button>
+            <button type="button" class="nav-tab" id="nav-messages" onclick="showMessagesTab()">Messages</button>
+          </nav>
+          <div class="account-controls">
+            <button type="button" class="bell-btn" onclick="toggleNotificationPanel()" title="Notifications">
+              &#128276;<span id="bell-badge" class="bell-badge hidden">0</span>
+            </button>
+            <div class="account-menu">
+              <button type="button" id="username-display" class="username" onclick="toggleAccountMenu()"></button>
+              <div id="account-dropdown" class="account-dropdown hidden">
+                <div id="account-dropdown-username" class="account-dropdown-username"></div>
+                <button type="button" class="account-dropdown-item" onclick="logout()">Sign Out</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Hero ───────────────────────────────────────────────────── -->
+  <section id="hero-section">
+    <div class="hero-inner">
+      <div class="hero-label">AI-Powered Styling</div>
+      <div class="hero-rule"></div>
+      <h1 class="hero-title">Smart Wardrobe</h1>
+      <div class="hero-rule"></div>
+      <p class="hero-subtitle">Personalized outfit recommendations from your own wardrobe.</p>
+      <p class="hero-desc">Stop staring at your closet. Add your clothing items once and let Smart Wardrobe curate complete outfits for any occasion, season, or style.</p>
+      <a class="btn hero-cta" href="#auth-section">Get Started</a>
+    </div>
+  </section>
+
+  <!-- ── Auth ───────────────────────────────────────────────────── -->
+  <section id="auth-section" class="auth-section">
+    <div class="container">
+      <div class="auth-heading">
+        <h2>Welcome</h2>
+        <p>Create an account or sign in to access your wardrobe.</p>
+      </div>
+      <div class="two-col">
+
+        <div class="card">
+          <h2>Create Account</h2>
+          <form id="register-form">
+            <div class="field">
+              <label>Username</label>
+              <input type="text" id="reg-username" placeholder="3–30 characters"
+                     required minlength="3" maxlength="30">
+            </div>
+            <div class="field">
+              <label>Email</label>
+              <input type="email" id="reg-email" required>
+            </div>
+            <div class="field">
+              <label>Password</label>
+              <input type="password" id="reg-password" placeholder="Min 6 characters"
+                     required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-primary w-full">Create Account</button>
+          </form>
+          <p id="register-msg" class="msg"></p>
+        </div>
+
+        <div class="card">
+          <h2>Sign In</h2>
+          <form id="login-form">
+            <div class="field">
+              <label>Username</label>
+              <input type="text" id="login-username" required>
+            </div>
+            <div class="field">
+              <label>Password</label>
+              <input type="password" id="login-password" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-full">Sign In</button>
+          </form>
+          <p id="login-msg" class="msg"></p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── App Dashboard (visible when logged in) ─────────────────── -->
+  <main id="app" class="hidden">
+    <div class="container">
+
+      <!-- ── Overview (UI redesign, demo/presentation visual-direction
+           pass) ──────────────────────────────────────────────────────
+           Real counts only, from data the dashboard already fetches
+           (loadWardrobe/loadSavedOutfits in app.js) - never invented.
+           The greeting text is set from the same username already shown
+           in the header (see app.js::showApp) - no new backend call.
+           Quick actions reuse existing elements/functions; no new
+           backend calls. ────────────────────────────────────────── -->
+      <section class="dashboard-overview">
+        <div class="overview-greeting">
+          <h2 id="dashboard-greeting" class="greeting-title">Welcome back</h2>
+          <span class="status-pill">Ready to get styled?</span>
+        </div>
+        <div class="overview-body">
+          <div class="overview-stats">
+            <div class="stat-tile">
+              <div class="stat-value" id="stat-wardrobe-count">&ndash;</div>
+              <div class="stat-label">Wardrobe Items</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-value" id="stat-outfits-count">&ndash;</div>
+              <div class="stat-label">Saved Outfits</div>
+            </div>
+          </div>
+          <div class="overview-actions">
+            <button type="button" class="quick-action-btn" onclick="goToDashboardAddItem()">
+              + Add an Item
+            </button>
+            <button type="button" class="quick-action-btn" onclick="goToRecommendationForm()">
+              Get a Recommendation
+            </button>
+            <button type="button" class="quick-action-btn" onclick="showChatTab()">
+              Ask the Stylist
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Dashboard structural pass: Overview vs. Actions ────────────
+           Two lightweight subviews sharing this one top-level "Dashboard"
+           tab/container - not a second nav bar (see .subtabs in
+           style.css). Nothing here changes which functions own which
+           data; every id/form/handler below is unchanged from before this
+           pass, only its position in the DOM moved. ───────────────── -->
+      <div class="subtabs" role="tablist" aria-label="Dashboard sections">
+        <button type="button" class="subtab active" id="dashboard-subtab-overview"
+                onclick="showDashboardSubtab('overview')">Overview</button>
+        <button type="button" class="subtab" id="dashboard-subtab-actions"
+                onclick="showDashboardSubtab('actions')">Actions</button>
+      </div>
+
+      <div id="dashboard-overview-view">
+
+        <!-- Wardrobe Section (read/manage - adding a new item lives under
+             Actions; see "Add a Clothing Item" below) -->
+        <section class="section">
+          <div class="section-header">
+            <div>
+              <h2 class="section-heading">My Wardrobe</h2>
+              <p class="section-sub">Manage your clothing collection.</p>
+            </div>
+          </div>
+
+          <div id="wardrobe-grid" class="card-grid"></div>
+          <div id="wardrobe-empty" class="empty-state hidden">
+            <div class="empty-icon">&#10022;</div>
+            <p class="empty-title">Your wardrobe is empty</p>
+            <p class="empty-sub">Add your first clothing item from Dashboard → Actions.</p>
+          </div>
+        </section>
+
+        <!-- Saved Outfits Section -->
+        <section class="section">
+          <div class="section-header">
+            <div>
+              <h2 class="section-heading">My Outfits</h2>
+              <p class="section-sub">Every outfit you've built or saved, in one place.</p>
+            </div>
+            <div class="flex-row-sm">
+              <button type="button" onclick="openOutfitBuilder()" class="btn btn-primary btn-sm">+ New Outfit</button>
+              <button onclick="loadSavedOutfits()" class="btn btn-ghost">Refresh</button>
+            </div>
+          </div>
+
+          <p id="saved-outfits-msg" class="msg"></p>
+          <p id="feedback-msg" class="msg"></p>
+
+          <div id="saved-outfits-grid" class="outfit-grid"></div>
+          <div id="saved-outfits-empty" class="empty-state hidden">
+            <div class="empty-icon">&#10022;</div>
+            <p class="empty-title">No outfits yet</p>
+            <p class="empty-sub">Build one manually or save a recommendation to see it here.</p>
+          </div>
+        </section>
+
+      </div>
+
+      <div id="dashboard-actions-view" class="hidden">
+
+        <!-- Add Item Section -->
+        <section class="section">
+          <div class="section-header">
+            <div>
+              <h2 class="section-heading">Add a Clothing Item</h2>
+              <p class="section-sub">Add something new to your wardrobe.</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Add a Clothing Item</h3>
+            <form id="add-form">
+              <div class="form-grid">
+                <div class="field">
+                  <label>Name</label>
+                  <input type="text" id="i-name" placeholder="e.g. White Oxford Shirt" required>
+                </div>
+                <div class="field">
+                  <label>Color</label>
+                  <div class="color-picker">
+                    <button type="button" class="color-picker-trigger" id="i-color-trigger" onclick="toggleColorPicker('i')">
+                      <span class="color-dot" id="i-color-dot"></span>
+                      <span class="color-picker-trigger-label" id="i-color-label">Select a color…</span>
+                    </button>
+                    <input type="hidden" id="i-color">
+                    <input type="hidden" id="i-color-hex">
+                    <div class="color-picker-panel hidden" id="i-color-panel"></div>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Type</label>
+                  <select id="i-type" required>
+                    <option value="">Select a type…</option>
+                    <option value="top">Top</option>
+                    <option value="bottom">Bottom</option>
+                    <option value="dress">Dress</option>
+                    <option value="outerwear">Outerwear</option>
+                    <option value="shoes">Shoes</option>
+                    <option value="accessory">Accessory</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Season</label>
+                  <select id="i-season" required>
+                    <option value="">Select a season…</option>
+                    <option value="spring">Spring</option>
+                    <option value="summer">Summer</option>
+                    <option value="autumn">Autumn</option>
+                    <option value="winter">Winter</option>
+                    <option value="all">All Seasons</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Style</label>
+                  <div class="multi-select">
+                    <button type="button" class="multi-select-trigger" onclick="toggleMultiSelectPanel('i-style')">
+                      <span class="multi-select-chips" id="i-style-chips"></span>
+                      <span class="multi-select-caret">&#9662;</span>
+                    </button>
+                    <div class="multi-select-panel hidden" id="i-style-panel"></div>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Occasion</label>
+                  <div class="multi-select">
+                    <button type="button" class="multi-select-trigger" onclick="toggleMultiSelectPanel('i-occasion')">
+                      <span class="multi-select-chips" id="i-occasion-chips"></span>
+                      <span class="multi-select-caret">&#9662;</span>
+                    </button>
+                    <div class="multi-select-panel hidden" id="i-occasion-panel"></div>
+                  </div>
+                </div>
+                <div class="field span-2">
+                  <label>Photo <span class="optional">(optional)</span></label>
+                  <input type="file" id="i-image" accept="image/jpeg,image/jpg,image/png,image/webp">
+                  <img id="i-image-preview" class="image-preview hidden" alt="Preview">
+                  <button type="button" id="i-analyze-btn" class="btn btn-ghost btn-sm" disabled>Analyze photo</button>
+                  <p id="i-analyze-msg" class="msg"></p>
+                  <p id="i-ai-note" class="hint hidden">
+                    AI-suggested — season, style, and occasion are guesses. Review every field before saving.
+                  </p>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary">Add to Wardrobe</button>
+            </form>
+            <p id="add-msg" class="msg"></p>
+          </div>
+        </section>
+
+        <!-- Style Memory / Preferences Section -->
+        <section class="section">
+          <div class="section-header">
+            <div>
+              <h2 class="section-heading">Style Memory</h2>
+              <p class="section-sub">Your long-term style preferences, remembered across sessions.</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Preferences</h3>
+            <p class="hint">
+              All fields are optional. Separate multiple values with commas.
+              Styles: casual, formal, sport, streetwear, elegant &middot;
+              Occasions: casual, work, formal, sport, university &middot;
+              Item types: top, bottom, dress, outerwear, shoes, accessory.
+            </p>
+            <form id="memory-form">
+              <div class="form-grid">
+                <div class="field">
+                  <label>Preferred Styles</label>
+                  <input type="text" id="m-preferred-styles" placeholder="e.g. casual, elegant">
+                </div>
+                <div class="field">
+                  <label>Preferred Occasions</label>
+                  <input type="text" id="m-preferred-occasions" placeholder="e.g. work, casual">
+                </div>
+                <div class="field">
+                  <label>Liked Colors</label>
+                  <input type="text" id="m-liked-colors" placeholder="e.g. black, navy, white">
+                </div>
+                <div class="field">
+                  <label>Disliked Colors</label>
+                  <input type="text" id="m-disliked-colors" placeholder="e.g. orange, neon green">
+                </div>
+                <div class="field">
+                  <label>Disliked Item Types</label>
+                  <input type="text" id="m-disliked-item-types" placeholder="e.g. shoes, accessory">
+                </div>
+                <div class="field">
+                  <label>Preferred Fit</label>
+                  <select id="m-preferred-fit">
+                    <option value="">No preference</option>
+                    <option value="fitted">Fitted</option>
+                    <option value="relaxed">Relaxed</option>
+                    <option value="oversized">Oversized</option>
+                    <option value="regular">Regular</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Communication Style</label>
+                  <select id="m-communication-style">
+                    <option value="">No preference</option>
+                    <option value="concise">Concise</option>
+                    <option value="detailed">Detailed</option>
+                    <option value="friendly">Friendly</option>
+                    <option value="formal">Formal</option>
+                  </select>
+                </div>
+                <div class="field span-2">
+                  <label>Notes <span class="optional">(optional)</span></label>
+                  <textarea id="m-notes" rows="3" maxlength="1000"
+                            placeholder="Anything else we should know about your style?"></textarea>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary">Save Preferences</button>
+            </form>
+            <p id="memory-msg" class="msg"></p>
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ── Explore ────────────────────────────────────────────────── -->
+  <section id="explore-app" class="hidden">
+    <div class="container">
+
+      <section class="section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-heading">Explore</h2>
+            <p class="section-sub">Share posts and see what other members are sharing.</p>
+          </div>
+        </div>
+
+        <!-- ── Explore structural pass: Feed / My Posts / Search People ──
+             Feed and My Posts already existed as separate sections; this
+             only adds a subtab switcher (see .subtabs in style.css) and
+             relocates the post-creation card under My Posts - every
+             id/form/handler is unchanged from before this pass. Search
+             People is new: it reuses the same GET /users?search= the
+             Messages "start a new conversation" panel already uses (see
+             explore-profile.js), and opens the same shared
+             #profile-modal used from Explore posts and Messages. ────── -->
+        <div class="subtabs" role="tablist" aria-label="Explore sections">
+          <button type="button" class="subtab active" id="explore-subtab-feed"
+                  onclick="showExploreSubtab('feed')">Feed</button>
+          <button type="button" class="subtab" id="explore-subtab-my-posts"
+                  onclick="showExploreSubtab('my-posts')">My Posts</button>
+          <button type="button" class="subtab" id="explore-subtab-search-people"
+                  onclick="showExploreSubtab('search-people')">Search People</button>
+        </div>
+
+        <div id="explore-feed-view">
+          <div class="section-header">
+            <div>
+              <h3 class="section-heading">Feed</h3>
+              <p class="section-sub">Newest posts from everyone.</p>
+            </div>
+            <button type="button" onclick="loadFeed()" class="btn btn-ghost">Refresh</button>
+          </div>
+          <p id="feed-status" class="hint"></p>
+          <div id="feed-empty" class="empty-state hidden">
+            <div class="empty-icon">&#10022;</div>
+            <p class="empty-title">No posts yet</p>
+            <p class="empty-sub">Be the first to share something.</p>
+          </div>
+          <div id="feed-list"></div>
+          <div id="feed-load-more" class="load-more-row hidden">
+            <button type="button" class="btn btn-ghost" onclick="loadMoreFeed()">Load more</button>
+          </div>
+        </div>
+
+        <div id="explore-my-posts-view" class="hidden">
+          <div class="card">
+            <h3>Create a Post</h3>
+            <form id="post-form">
+              <div class="field field-tight">
+                <label>Title</label>
+                <input type="text" id="post-title" maxlength="150" required>
+              </div>
+              <div class="field field-tight">
+                <label>Body</label>
+                <textarea id="post-body" rows="3" maxlength="2000" required></textarea>
+              </div>
+              <div class="field field-tight">
+                <label><input type="checkbox" id="post-anonymous"> Post anonymously</label>
+              </div>
+              <div class="field field-tight">
+                <label>Images or videos <span class="optional">(up to 4, optional, MP4 video supported)</span></label>
+                <input type="file" id="post-images" accept="image/jpeg,image/jpg,image/png,image/webp,video/mp4" multiple>
+              </div>
+              <div class="field field-tight">
+                <label>Link a saved outfit to enable Recreate <span class="optional">(optional)</span></label>
+                <select id="post-shared-outfit">
+                  <option value="">No shared outfit</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary">Post</button>
+            </form>
+            <p id="post-msg" class="msg"></p>
+          </div>
+
+          <div class="section-header">
+            <div>
+              <h3 class="section-heading">My Posts</h3>
+              <p class="section-sub">Posts you've shared, and their total engagement.</p>
+            </div>
+            <button type="button" onclick="loadMyPosts()" class="btn btn-ghost">Refresh</button>
+          </div>
+          <div id="my-posts-totals" class="totals-banner hidden">
+            <div class="totals-stat">
+              <div class="totals-value" id="my-posts-likes">0</div>
+              <div class="totals-label">Total Likes</div>
+            </div>
+            <div class="totals-stat">
+              <div class="totals-value" id="my-posts-dislikes">0</div>
+              <div class="totals-label">Total Dislikes</div>
+            </div>
+          </div>
+          <p id="my-posts-status" class="hint"></p>
+          <div id="my-posts-empty" class="empty-state hidden">
+            <div class="empty-icon">&#10022;</div>
+            <p class="empty-title">You haven't posted yet</p>
+            <p class="empty-sub">Create your first post above.</p>
+          </div>
+          <div id="my-posts-list"></div>
+          <div id="my-posts-load-more" class="load-more-row hidden">
+            <button type="button" class="btn btn-ghost" onclick="loadMoreMyPosts()">Load more</button>
+          </div>
+        </div>
+
+        <div id="explore-search-people-view" class="hidden">
+          <div class="card">
+            <div class="field field-tight">
+              <label>Find a member by username</label>
+              <input type="text" id="search-people-input" placeholder="Type a username..."
+                     maxlength="50" autocomplete="off">
+            </div>
+            <p id="search-people-status" class="hint"></p>
+            <div id="search-people-empty" class="empty-state hidden">
+              <p class="empty-title">No members found</p>
+              <p class="empty-sub">Try a different username, or clear the search to see everyone.</p>
+            </div>
+            <div id="search-people-results"></div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </section>
+
+  <!-- ── Shared public-profile view ───────────────────────────────────
+       One lightweight modal reused from three entry points: Explore
+       posts, Search People, and Messages - see explore-profile.js. Shows
+       only what GET /users already exposes (id + username) plus that
+       user's own public (non-anonymous) posts via GET /posts?author_id=,
+       and the existing Message action. No followers, presence, bio, or
+       profile-editing - none of that data exists on the backend and none
+       is added here. ────────────────────────────────────────────────── -->
+  <div id="profile-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="profile-modal-username">Profile</h3>
+        <button type="button" class="modal-close" onclick="closeProfileModal()">&times;</button>
+      </div>
+      <div class="modal-actions modal-actions-spread">
+        <button type="button" id="profile-modal-message-btn" class="btn btn-primary btn-sm">Message</button>
+      </div>
+      <p class="section-sub">Public posts</p>
+      <p id="profile-posts-status" class="hint"></p>
+      <div id="profile-posts-empty" class="empty-state hidden">
+        <p class="empty-title">No public posts yet</p>
+      </div>
+      <div id="profile-posts-list"></div>
+      <div id="profile-posts-load-more" class="load-more-row hidden">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="loadMoreProfilePosts()">Load more</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Messages ───────────────────────────────────────────────── -->
+  <section id="messages-app" class="hidden">
+    <div class="container">
+      <section class="section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-heading">Messages</h2>
+            <p class="section-sub">Your direct message conversations.</p>
+          </div>
+          <button type="button" onclick="loadInbox()" class="btn btn-ghost">Refresh</button>
+        </div>
+
+        <div id="thread-view" class="card hidden">
+          <div class="thread-header">
+            <h3 id="thread-with">Conversation</h3>
+            <div class="flex-row-sm">
+              <button type="button" id="thread-view-profile-btn" class="btn btn-ghost btn-sm"
+                      onclick="viewCurrentThreadProfile()">View Profile</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="closeThread()">Back to Inbox</button>
+            </div>
+          </div>
+          <p id="thread-status" class="hint"></p>
+          <div id="thread-empty" class="empty-state hidden">
+            <div class="empty-icon">&#10022;</div>
+            <p class="empty-title">No messages yet</p>
+            <p class="empty-sub">Send the first message below.</p>
+          </div>
+          <div id="thread-messages" class="thread-messages"></div>
+          <div id="thread-load-more" class="load-more-row hidden">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="loadMoreThread()">Load older</button>
+          </div>
+          <form id="thread-form" class="thread-form">
+            <textarea id="thread-body" rows="2" maxlength="2000" placeholder="Type a message..." required></textarea>
+            <input type="file" id="thread-images" accept="image/jpeg,image/jpg,image/png,image/webp,video/mp4" multiple>
+            <button type="submit" class="btn btn-primary">Send</button>
+          </form>
+          <p id="thread-msg" class="msg"></p>
+        </div>
+
+        <div id="inbox-view">
+          <div class="card">
+            <div class="section-header">
+              <h3>New conversation</h3>
+              <button type="button" id="new-thread-toggle" class="btn btn-ghost btn-sm"
+                      onclick="toggleNewThreadPanel()">Start a new conversation</button>
+            </div>
+            <div id="new-thread-panel" class="hidden">
+              <div class="field field-tight">
+                <label>Find a member by username</label>
+                <input type="text" id="new-thread-search" placeholder="Type a username..."
+                       maxlength="50" autocomplete="off">
+              </div>
+              <p id="new-thread-status" class="hint"></p>
+              <div id="new-thread-empty" class="empty-state hidden">
+                <p class="empty-title">No members found</p>
+                <p class="empty-sub">Try a different username, or clear the search to see everyone.</p>
+              </div>
+              <div id="new-thread-results"></div>
+            </div>
+          </div>
+
+          <p id="inbox-status" class="hint"></p>
+          <div id="inbox-empty" class="empty-state hidden">
+            <div class="empty-icon">&#10022;</div>
+            <p class="empty-title">No conversations yet</p>
+            <p class="empty-sub">Start a new conversation above, or message someone from the Explore feed.</p>
+          </div>
+          <div id="inbox-list"></div>
+          <div id="inbox-load-more" class="load-more-row hidden">
+            <button type="button" class="btn btn-ghost" onclick="loadMoreInbox()">Load more</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ── AI Stylist: Chat + Recommendations ──────────────────────────
+       Chat is queued-path only: submits go through POST /chat/jobs and
+       are polled via GET /chat/jobs/{id} (see chat.js) - never the
+       synchronous POST /chat endpoint, so a normal user's chat always
+       goes through the persistent priority-queue/worker architecture.
+       Recommendations is the same recommendation UI/logic that used to
+       live on the Dashboard (see app.js) - relocated here only; every id
+       and handler below is unchanged, and this remains one top-level
+       "AI Chat" tab/container so id="chat-app" and the nav button that
+       targets it stay exactly as before this pass. ─────────────────── -->
+  <section id="chat-app" class="hidden">
+    <div class="container">
+      <section class="section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-heading">AI Stylist</h2>
+            <p class="section-sub">Chat with your stylist, or generate a recommended outfit from your wardrobe.</p>
+          </div>
+        </div>
+
+        <div class="subtabs" role="tablist" aria-label="AI Stylist sections">
+          <button type="button" class="subtab" id="ai-subtab-chat"
+                  onclick="showAiStylistSubtab('chat')">Chat</button>
+          <button type="button" class="subtab active" id="ai-subtab-recommendations"
+                  onclick="showAiStylistSubtab('recommendations')">Recommendations</button>
+        </div>
+
+        <div id="ai-stylist-chat-view" class="hidden">
+          <div class="card">
+            <div id="chat-log" class="thread-messages">
+              <p id="chat-empty" class="hint">Ask your AI stylist anything - e.g. "What goes well with a navy blazer?"</p>
+            </div>
+            <form id="chat-form" class="thread-form">
+              <textarea id="chat-input" rows="2" maxlength="2000" placeholder="Type a message..." required></textarea>
+              <button type="submit" id="chat-send-btn" class="btn btn-primary">Send</button>
+            </form>
+            <p id="chat-msg" class="msg"></p>
+          </div>
+        </div>
+
+        <div id="ai-stylist-recommendations-view">
+          <div class="card">
+            <h3>Build Your Outfit</h3>
+            <p class="hint">All filters are optional — leave blank for any match.</p>
+            <div class="form-grid three-col">
+              <div class="field">
+                <label>Occasion</label>
+                <select id="r-occasion">
+                  <option value="">Any Occasion</option>
+                  <option value="casual">Casual</option>
+                  <option value="work">Work</option>
+                  <option value="formal">Formal</option>
+                  <option value="sport">Sport</option>
+                  <option value="university">University</option>
+                  <option value="travel">Travel</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Season</label>
+                <select id="r-season">
+                  <option value="">Any Season</option>
+                  <option value="spring">Spring</option>
+                  <option value="summer">Summer</option>
+                  <option value="autumn">Autumn</option>
+                  <option value="winter">Winter</option>
+                  <option value="all">All Seasons</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Style</label>
+                <select id="r-style">
+                  <option value="">Any Style</option>
+                  <option value="casual">Casual</option>
+                  <option value="formal">Formal</option>
+                  <option value="sport">Sport</option>
+                  <option value="streetwear">Streetwear</option>
+                  <option value="elegant">Elegant</option>
+                  <option value="minimal">Minimal</option>
+                </select>
+              </div>
+            </div>
+            <button onclick="getRecommendation(this)" class="btn btn-gold btn-recommend">
+              Generate Outfit
+            </button>
+            <p id="rec-msg" class="msg"></p>
+          </div>
+
+          <div id="rec-result" class="hidden">
+            <div class="rec-panel">
+              <div class="rec-panel-header">
+                <span class="rec-panel-label">Your Recommended Outfit</span>
+              </div>
+              <p id="rec-missing" class="rec-missing hidden"></p>
+              <div id="rec-shop-suggestions" class="rec-shop-suggestions hidden"></div>
+              <div id="rec-preview"></div>
+
+              <div class="rec-feedback-block">
+                <p class="hint">Like or dislike this recommendation - optionally tell us why.</p>
+                <div class="form-grid three-col">
+                  <div class="field">
+                    <label>Reason <span class="optional">(optional)</span></label>
+                    <select id="rec-feedback-scope" onchange="onRecFeedbackScopeChange()">
+                      <option value="">No specific reason</option>
+                      <option value="combination">This combination</option>
+                      <option value="color">A specific item's color</option>
+                      <option value="style">A specific item's style</option>
+                      <option value="clothing_type">A specific item's type</option>
+                      <option value="occasion_season_mismatch">Wrong occasion/season</option>
+                    </select>
+                  </div>
+                  <div class="field hidden" id="rec-feedback-item-field">
+                    <label>Which item?</label>
+                    <select id="rec-feedback-item"></select>
+                  </div>
+                </div>
+                <div class="rec-save-row">
+                  <button type="button" class="btn btn-ghost" onclick="submitRecFeedback(true)">&#128077; Like</button>
+                  <button type="button" class="btn btn-ghost" onclick="submitRecFeedback(false)">&#128078; Dislike</button>
+                </div>
+                <p id="rec-feedback-msg" class="msg"></p>
+              </div>
+
+              <div class="rec-save-block">
+                <div class="rec-save-row">
+                  <button type="button" onclick="saveRecommendedOutfit()" class="btn btn-primary">Save recommended outfit</button>
+                  <button type="button" onclick="customizeRecommendedOutfit()" class="btn btn-ghost">Customize</button>
+                </div>
+                <p id="save-outfit-msg" class="msg"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ── Notification Panel ─────────────────────────────────────── -->
+  <div id="notification-panel" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Notifications</h3>
+        <button type="button" class="modal-close" onclick="toggleNotificationPanel()">&times;</button>
+      </div>
+      <div class="modal-actions modal-actions-spread">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="markAllNotificationsRead()">Mark all read</button>
+      </div>
+      <p id="notifications-status" class="hint"></p>
+      <div id="notifications-empty" class="empty-state hidden">
+        <div class="empty-icon">&#10022;</div>
+        <p class="empty-title">No notifications yet</p>
+        <p class="empty-sub">You'll see likes, dislikes, and messages here.</p>
+      </div>
+      <div id="notifications-list"></div>
+      <div id="notifications-load-more" class="load-more-row hidden">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="loadMoreNotifications()">Load more</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Outfit Builder Modal ───────────────────────────────────────── -->
+  <div id="outfit-builder-modal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <h3 id="builder-modal-title">Build an Outfit</h3>
+        <button type="button" class="modal-close" onclick="closeOutfitBuilder()">&times;</button>
+      </div>
+
+      <div id="builder-preview" class="flatlay-preview"></div>
+
+      <form id="builder-form">
+        <div id="builder-picker" class="builder-picker"></div>
+
+        <!-- Recreate handoff: catalog suggestions for clothing types Recreate
+             could not match in the user's wardrobe. Advisory only - the
+             Builder's own container, never the Dashboard's
+             #rec-shop-suggestions. -->
+        <div id="builder-shop-suggestions" class="builder-shop-suggestions hidden"></div>
+
+        <div class="form-grid three-col mt-md">
+          <div class="field span-2">
+            <label>Name <span class="optional">(optional)</span></label>
+            <input type="text" id="builder-name" maxlength="100" placeholder="Name this outfit">
+          </div>
+          <div class="field">
+            <label>Occasion</label>
+            <select id="builder-occasion">
+              <option value="">Any Occasion</option>
+              <option value="casual">Casual</option>
+              <option value="work">Work</option>
+              <option value="formal">Formal</option>
+              <option value="sport">Sport</option>
+              <option value="university">University</option>
+              <option value="travel">Travel</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Season</label>
+            <select id="builder-season">
+              <option value="">Any Season</option>
+              <option value="spring">Spring</option>
+              <option value="summer">Summer</option>
+              <option value="autumn">Autumn</option>
+              <option value="winter">Winter</option>
+              <option value="all">All Seasons</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Style</label>
+            <select id="builder-style">
+              <option value="">Any Style</option>
+              <option value="casual">Casual</option>
+              <option value="formal">Formal</option>
+              <option value="sport">Sport</option>
+              <option value="streetwear">Streetwear</option>
+              <option value="elegant">Elegant</option>
+              <option value="minimal">Minimal</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeOutfitBuilder()">Cancel</button>
+          <button type="submit" id="builder-save-btn" class="btn btn-primary" disabled>Save Outfit</button>
+        </div>
+        <p id="builder-msg" class="msg"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Edit Item Modal ─────────────────────────────────────────── -->
+  <div id="edit-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Edit Clothing Item</h3>
+        <button type="button" class="modal-close" onclick="closeEditModal()">&times;</button>
+      </div>
+      <form id="edit-form">
+        <input type="hidden" id="e-id">
+        <div class="form-grid">
+          <div class="field">
+            <label>Name</label>
+            <input type="text" id="e-name" required>
+          </div>
+          <div class="field">
+            <label>Color</label>
+            <div class="color-picker">
+              <button type="button" class="color-picker-trigger" id="e-color-trigger" onclick="toggleColorPicker('e')">
+                <span class="color-dot" id="e-color-dot"></span>
+                <span class="color-picker-trigger-label" id="e-color-label">Select a color…</span>
+              </button>
+              <input type="hidden" id="e-color">
+              <input type="hidden" id="e-color-hex">
+              <div class="color-picker-panel hidden" id="e-color-panel"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Type</label>
+            <select id="e-type" required>
+              <option value="">Select a type…</option>
+              <option value="top">Top</option>
+              <option value="bottom">Bottom</option>
+              <option value="dress">Dress</option>
+              <option value="outerwear">Outerwear</option>
+              <option value="shoes">Shoes</option>
+              <option value="accessory">Accessory</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Season</label>
+            <select id="e-season" required>
+              <option value="">Select a season…</option>
+              <option value="spring">Spring</option>
+              <option value="summer">Summer</option>
+              <option value="autumn">Autumn</option>
+              <option value="winter">Winter</option>
+              <option value="all">All Seasons</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Style</label>
+            <div class="multi-select">
+              <button type="button" class="multi-select-trigger" onclick="toggleMultiSelectPanel('e-style')">
+                <span class="multi-select-chips" id="e-style-chips"></span>
+                <span class="multi-select-caret">&#9662;</span>
+              </button>
+              <div class="multi-select-panel hidden" id="e-style-panel"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Occasion</label>
+            <div class="multi-select">
+              <button type="button" class="multi-select-trigger" onclick="toggleMultiSelectPanel('e-occasion')">
+                <span class="multi-select-chips" id="e-occasion-chips"></span>
+                <span class="multi-select-caret">&#9662;</span>
+              </button>
+              <div class="multi-select-panel hidden" id="e-occasion-panel"></div>
+            </div>
+          </div>
+          <div class="field span-2">
+            <label>Replace Photo <span class="optional">(optional)</span></label>
+            <input type="file" id="e-image" accept="image/jpeg,image/jpg,image/png,image/webp">
+            <img id="e-image-preview" class="image-preview hidden" alt="Preview">
+            <label id="e-remove-photo-row" class="hidden">
+              <input type="checkbox" id="e-remove-photo"> Remove current photo
+            </label>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+        <p id="edit-msg" class="msg"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Footer ─────────────────────────────────────────────────── -->
+  <footer class="site-footer">
+    <div class="container">
+      <span class="footer-logo">Smart Wardrobe</span>
+      <span class="footer-sep">&mdash;</span>
+      <span class="footer-tagline">Your personal stylist, powered by your own wardrobe.</span>
+    </div>
+  </footer>
+
+  <script src="./explore-core.js"></script>
+  <script src="./explore-posts.js"></script>
+  <script src="./explore-messages.js"></script>
+  <script src="./explore-notifications.js"></script>
+  <script src="./explore-live.js"></script>
+  <script src="./explore-profile.js"></script>
+  <script src="./outfit-builder.js"></script>
+  <script src="./chat.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

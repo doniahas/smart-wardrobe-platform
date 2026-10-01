@@ -1,0 +1,52 @@
+{
+  "products": [
+    {
+      "id": 500001,
+      "handle": "valid-hat",
+      "title": "Wool Beanie Hat",
+      "product_type": "Hats",
+      "variants": [{"id": 10, "price": "25.00", "available": true}],
+      "images": [{"src": "https://cdn.example-shopify-test.com/files/hat.jpg"}]
+    },
+    {
+      "id": 500002,
+      "handle": "no-available-variant",
+      "title": "Sold Out Shirt",
+      "product_type": "Tops",
+      "variants": [{"id": 11, "price": "20.00", "available": false}],
+      "images": []
+    },
+    {
+      "id": 500003,
+      "handle": "bad-price",
+      "title": "Broken Price Shirt",
+      "product_type": "Tops",
+      "variants": [{"id": 12, "price": "not-a-number", "available": true}],
+      "images": []
+    },
+    {
+      "id": 500004,
+      "handle": "",
+      "title": "Missing Handle Shirt",
+      "product_type": "Tops",
+      "variants": [{"id": 13, "price": "10.00", "available": true}],
+      "images": []
+    },
+    {
+      "id": 500005,
+      "handle": "unknown-category",
+      "title": "Mystery Gadget XR200",
+      "product_type": "Widgets",
+      "variants": [{"id": 14, "price": "10.00", "available": true}],
+      "images": []
+    },
+    {
+      "id": 500006,
+      "handle": "negative-price",
+      "title": "Negative Price Top",
+      "product_type": "Tops",
+      "variants": [{"id": 15, "price": "-5.00", "available": true}],
+      "images": []
+    }
+  ]
+}

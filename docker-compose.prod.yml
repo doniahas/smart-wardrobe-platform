@@ -1,0 +1,116 @@
+# Production override - adds Caddy as the sole public-facing
+# reverse proxy and removes web's direct host port publishing, so only
+# Caddy (80/443) is reachable from outside the Docker network. Also adds
+# a restart policy to every service (see the comment on web's restart:
+# below for why this is production-only and not in the base file).
+#
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Local `docker compose up` (no -f flags) is completely unaffected by
+# this file - it is never applied unless explicitly requested, and every
+# service/volume/network already defined in docker-compose.yml is
+# inherited unchanged except for the overrides below.
+
+services:
+  web:
+    # Production-only, like every restart: below - the base docker-
+    # compose.yml intentionally has no restart policy anywhere so a local
+    # `docker compose up` crash surfaces immediately instead of silently
+    # looping, which is what you want while developing. In production, a
+    # crashed container should recover on its own without someone having
+    # to notice and run `docker compose up` by hand.
+    restart: unless-stopped
+    # Production runs 2 stateless Web replicas behind Caddy, which
+    # discovers and load-balances them dynamically (Caddyfile's `dynamic a
+    # web 8000` upstream) - `container_name` is therefore still never set
+    # on `web` (required for scale>1; see that field's own comment).
+    # Production-only: plain local `docker compose up` (base file only)
+    # is unaffected and still starts exactly 1 web container. See
+    # docs/deployment.md's "Horizontal web scaling" section.
+    scale: 2
+    # Replaces (not appends to) the base file's ports list - web must
+    # never be reachable directly from the host/internet in production,
+    # only via caddy's internal reverse_proxy call (web:8000 over
+    # smartwardrobe-net). `!override` is required here because Compose's
+    # default merge behavior for list-type fields like `ports` is to
+    # concatenate across files, not replace - a plain empty list would
+    # not actually remove the base file's "8000:8000" mapping.
+    ports: !override []
+    # Production-only: services/web/Dockerfile's CMD is left completely
+    # untouched (local `docker compose up` behavior is unaffected) -
+    # `command:` fully replaces the image's Dockerfile CMD, so the full
+    # command is repeated here with two added flags.
+    #
+    # --proxy-headers makes uvicorn trust X-Forwarded-For/-Proto from
+    # caddy - without it, every request would appear to come from
+    # caddy's own container IP, collapsing slowapi's per-client rate
+    # limiting (core/limiter.py's get_remote_address key_func) into one
+    # shared bucket for all real users.
+    # --forwarded-allow-ips='*' is safe specifically because, in this
+    # production topology, web publishes no host port at all (see
+    # ports: !override [] above) - the only thing that can ever connect
+    # to this container is caddy, over the internal Docker network.
+    command:
+      [
+        "uvicorn", "app.main:app",
+        "--host", "0.0.0.0", "--port", "8000",
+        "--proxy-headers", "--forwarded-allow-ips=*"
+      ]
+
+  recommendation:
+    restart: unless-stopped
+
+  llm:
+    restart: unless-stopped
+
+  catalog:
+    restart: unless-stopped
+
+  mongo:
+    restart: unless-stopped
+
+  # Hard-disable automatic cold-seed in production, regardless of what the
+  # production .env (provisioned out-of-band, see docs/deployment.md)
+  # does or doesn't set for SEED_DEMO_DATA - this override is git-tracked
+  # and always applied together with docker-compose.yml for a real
+  # deployment (see the documented `-f docker-compose.yml
+  # -f docker-compose.prod.yml` invocation), so it can never be skipped by
+  # an accidental/missing env value the way a plain default could be.
+  # Compose merges `environment` per-key across -f files, so this value
+  # always wins over the base file's `${SEED_DEMO_DATA:-true}` default.
+  seed:
+    environment:
+      - SEED_DEMO_DATA=false
+
+  ollama:
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    container_name: smartwardrobe_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    env_file:
+      - .env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    # web has a real healthcheck (docker-compose.yml), so Caddy waits for
+    # it to be actually ready before reverse-proxying to it, instead of
+    # only "started" - Caddy never begins proxying to a web container that
+    # hasn't finished starting yet.
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - smartwardrobe-net
+
+volumes:
+  caddy_data:
+  caddy_config:

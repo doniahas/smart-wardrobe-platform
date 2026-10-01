@@ -1,0 +1,8 @@
+# Shell scripts must always keep LF line endings, regardless of a
+# contributor's core.autocrlf setting - a CRLF shebang line breaks exec()
+# inside a Linux container ("no such file or directory" for a file that
+# demonstrably exists). This matters most for services/web/docker-
+# entrypoint.sh, which is COPY'd into the web image and run as ENTRYPOINT,
+# but applies uniformly to every scripts/*.sh helper too, all of which are
+# only ever run under bash/Git Bash on Linux-style shells.
+*.sh text eol=lf

@@ -1,0 +1,2391 @@
+/* ── Variables ──────────────────────────────────────────────────────
+   Design tokens for the whole
+   site. Two changes here are foundational and cascade everywhere:
+
+   1. Typography is now a curated SYSTEM-FONT stack, not a Google Fonts
+      network dependency - the app must work without internet access
+      except where actual functionality needs it (the local LLM, image
+      uploads, etc.), and decorative webfonts don't qualify. Two families
+      only (an editorial serif for display headings, a clean sans for
+      everything functional) rather than the previous four - "a random
+      mix of many fonts" is exactly what a system stack with too many
+      aliases would risk, so --font-label/--font-meta now deliberately
+      alias the same two families instead of pulling in more.
+   2. --accent moved from a bright, campaign-poster red (#C8102E) to a
+      deeper wine/oxblood tone - the same hue family (this app's existing
+      red-accent identity is preserved) but desaturated and darkened so
+      it reads as a considered luxury accent used sparingly (thin
+      borders, small text, one CTA) rather than an alert color. ───────── */
+:root {
+  /* Background & surface - demo/presentation visual-direction pass:
+     warm cream page background, warm off-white cards (was pure white). */
+  --bg:            #F8F5EF;
+  --card:          #FFFCF7;
+  --surface-sunk:  #EFEAE0;
+  --hero-bg:       #302D29;
+
+  /* Accent - muted sage green (was a wine/oxblood red in an earlier
+     visual direction; this pass replaces it per the approved
+     demo/presentation visual direction). */
+  --gold:          #B8955A;
+  --gold-hover:    #9E7E45;
+  --gold-light:    #F0E4CE;
+  --accent:        #7F9F70;
+  --accent-hover:  #6C8860;
+  --accent-soft:   rgba(127,159,112,.14);
+
+  /* Text - warm charcoal (was near-black warm brown). */
+  --text:          #35322F;
+  --text-inv:      #F5F0E8;
+  --muted:         #77736C;
+  --muted-light:   #BEB6AE;
+
+  /* Semantic */
+  --success:       #2D6A4F;
+  --danger:        #9B2335;
+  --danger-light:  #F5D6DA;
+  --navy:          #1B2B4B;
+
+  /* Structure */
+  --border:        #E8E2D9;
+  --border-light:  #F0EAE0;
+
+  /* Demo/presentation-direction named aliases - same values as the
+     semantic tokens directly above (this pass tuned those tokens
+     in place rather than introducing a parallel palette), kept under
+     these names too since the approved visual spec references them by
+     name. New rules added by this pass (dashboard cards, recommendation
+     panel) use whichever name reads more clearly in context; existing
+     rules keep using the semantic names unchanged - both resolve to the
+     same value. */
+  --demo-bg:          var(--bg);
+  --demo-surface:     var(--card);
+  --demo-green:       var(--accent);
+  --demo-green-soft:  var(--accent-soft);
+  --demo-dark:        var(--hero-bg);
+  --demo-text:        var(--text);
+  --demo-text-muted:  var(--muted);
+  --demo-border:      var(--border);
+  --demo-white:       #FFFFFF;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 4px rgba(42,37,32,.06);
+  --shadow-sm: 0 2px 10px rgba(42,37,32,.08);
+  --shadow:    0 8px 24px rgba(42,37,32,.10);
+  --shadow-lg: 0 16px 40px rgba(42,37,32,.14);
+
+  /* Geometry */
+  --radius:    12px;
+  --radius-sm:  8px;
+  --radius-xs:  5px;
+  /* New, larger radius for the specific surfaces the approved visual
+     direction calls "large rounded corners" on: dashboard cards, the
+     recommendation panel, wardrobe item cards, and modals - NOT applied
+     app-wide (inbox rows/forum cards keep --radius/hardcoded values
+     unchanged, per the approved scope reduction). */
+  --radius-lg: 18px;
+
+  /* Typography - system-font stacks only, no network dependency.
+     --font-label/--font-meta are semantic aliases (small uppercase
+     labels / italic editorial accents) onto the same two families, kept
+     as separate variables so every existing rule that already reasons
+     about "label text" vs. "meta text" needs no changes. */
+  --font-serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Noto Serif', 'Times New Roman', serif;
+  --font-sans:  -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-label: var(--font-sans);
+  --font-meta:  var(--font-serif);
+
+  /* Spacing rhythm - a small consistent scale, used by newer sections
+     (stats strip, chat) alongside the pre-existing ad-hoc paddings. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+}
+
+/* ── Reset ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────── */
+.container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+/* ── Global Header ──────────────────────────────────────────────── */
+.site-header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  padding: 16px 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: .03em;
+}
+
+/* Header reorg: #user-bar now separates into two groups - the nav (left,
+   next to the logo) and .account-controls (right edge) - via its own
+   space-between, rather than one flat gap-separated row of everything. */
+.user-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  margin-left: 36px;
+}
+
+.account-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-menu { position: relative; }
+
+.username {
+  font-family: var(--font-label);
+  font-size: .78rem;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 7px 10px;
+  border-radius: var(--radius-xs);
+  transition: color .15s, background-color .15s;
+}
+.username:hover { color: var(--text); background: var(--surface-sunk); }
+.username:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Small dropdown under the username - same warm cream/sage system as the
+   rest of the app, subtle shadow instead of a heavy border. */
+.account-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 168px;
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  padding: 6px;
+  z-index: 50;
+}
+.account-dropdown-username {
+  padding: 8px 10px 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-label);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.account-dropdown-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 9px 10px;
+  border-radius: var(--radius-xs);
+  font-size: .85rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.account-dropdown-item:hover { background: var(--accent-soft); color: var(--accent-hover); }
+.account-dropdown-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Hero ───────────────────────────────────────────────────────── */
+#hero-section {
+  background: var(--hero-bg);
+  background-image:
+    radial-gradient(ellipse at 25% 50%, rgba(127,159,112,.14) 0%, transparent 60%),
+    radial-gradient(ellipse at 75% 15%, rgba(127,159,112,.10) 0%, transparent 50%);
+  min-height: 68vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 24px;
+}
+
+.hero-inner {
+  max-width: 660px;
+}
+
+.hero-label {
+  display: inline-block;
+  font-family: var(--font-label);
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 22px;
+  padding: 5px 16px;
+  border: 1px solid rgba(127,159,112,.4);
+  border-radius: 20px;
+}
+
+.hero-rule {
+  width: 48px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  margin: 0 auto 20px;
+}
+
+.hero-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2.8rem, 6vw, 4.4rem);
+  font-weight: 700;
+  color: #F5F0E8;
+  line-height: 1.1;
+  letter-spacing: -.01em;
+  margin-bottom: 20px;
+}
+
+.hero-subtitle {
+  font-family: var(--font-meta);
+  font-size: clamp(1.05rem, 2.2vw, 1.24rem);
+  font-weight: 500;
+  font-style: italic;
+  color: rgba(245,240,232,.72);
+  margin-bottom: 16px;
+}
+
+.hero-desc {
+  font-size: .92rem;
+  color: rgba(245,240,232,.48);
+  max-width: 460px;
+  margin: 0 auto 38px;
+  line-height: 1.75;
+}
+
+/* Hero CTA — outlined accent, fills on hover */
+.hero-cta {
+  font-family: var(--font-label);
+  padding: 13px 38px;
+  font-size: .8rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  transition: background .2s, color .2s, box-shadow .2s;
+}
+
+.hero-cta:hover {
+  background: var(--accent);
+  color: #F5F0E8;
+  box-shadow: 0 8px 28px rgba(127,159,112,.35);
+}
+
+/* ── Auth Section ───────────────────────────────────────────────── */
+.auth-section {
+  background: #F2EDE4;
+  padding: 64px 0 72px;
+  border-bottom: 1px solid var(--border);
+}
+
+.auth-heading {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.auth-heading h2 {
+  font-family: var(--font-serif);
+  font-size: 1.9rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.auth-heading p {
+  font-size: .9rem;
+  color: var(--muted);
+}
+
+/* ── Auth forms — editorial restyle ────────────────────────────────
+   .card / .field label / input are shared with the wardrobe, memory,
+   and recommendation forms, so overrides here are scoped under
+   .auth-section and do not touch those other forms. ─────────────── */
+.auth-section .card {
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  box-shadow: none;
+  padding: 34px 32px;
+}
+
+.auth-section .field label {
+  font-family: var(--font-label);
+}
+
+.auth-section input {
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--border);
+  border-radius: 0;
+  padding: 10px 2px;
+}
+
+.auth-section input:focus {
+  border-bottom-color: var(--accent);
+  box-shadow: none;
+  background: transparent;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────── */
+.site-footer {
+  padding: 24px 0;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+  margin-top: 64px;
+}
+
+.footer-logo {
+  font-family: var(--font-serif);
+  font-size: .93rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.footer-sep {
+  color: var(--muted-light);
+  margin: 0 10px;
+}
+
+.footer-tagline {
+  font-family: var(--font-meta);
+  font-style: italic;
+  font-size: .85rem;
+  color: var(--muted);
+}
+
+/* ── Sections (app dashboard) ───────────────────────────────────── */
+.section { margin-top: 56px; }
+.section:last-child { padding-bottom: 8px; }
+
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.section-heading {
+  font-family: var(--font-serif);
+  font-size: 1.65rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+.section-sub {
+  font-size: .86rem;
+  color: var(--muted);
+}
+
+/* ── Subtabs ─────────────────────────────────────────────────────────
+   Lightweight subview switcher used inside an already-top-level tab
+   (Dashboard's Overview/Actions, AI Stylist's Chat/Recommendations,
+   Explore's Feed/My Posts/Search People) - deliberately smaller/quieter
+   than .nav-tabs above so it reads as "a couple of tabs within this
+   page", not a second main navigation bar. Same active-state language as
+   .nav-tab.active (pale sage pill, darker sage text) for visual
+   consistency, just lighter weight. */
+.subtabs {
+  display: flex;
+  gap: 4px;
+  margin: -6px 0 26px;
+}
+.subtab {
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-family: var(--font-label);
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s, background-color .15s;
+}
+.subtab:hover { color: var(--text); background: var(--surface-sunk); }
+.subtab.active { color: var(--accent-hover); background: var(--accent-soft); font-weight: 600; }
+.subtab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Dashboard overview (UI redesign) ───────────────────────────────
+   A real, at-a-glance summary using data the dashboard already fetches
+   (see app.js::renderWardrobe/renderSavedOutfits) - never invented
+   metrics - plus quick actions that jump to existing controls/tabs. */
+/* Demo/presentation visual-direction pass: the dashboard overview was
+   called out as the surface that should receive the strongest update -
+   a friendly greeting + small status pill above, and the stats/quick
+   actions now read as soft rounded cards rather than plain bordered
+   text, so the whole area feels calmer and less "admin panel". */
+.dashboard-overview {
+  margin-top: 32px;
+  padding-bottom: 32px;
+}
+
+.overview-greeting {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.greeting-title {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.status-pill {
+  display: inline-block;
+  font-family: var(--font-label);
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .06em;
+  color: var(--accent-hover);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 5px 14px;
+}
+
+.overview-body {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.overview-stats { display: flex; gap: 14px; }
+
+.stat-tile {
+  min-width: 128px;
+  padding: 16px 22px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.stat-value {
+  font-family: var(--font-serif);
+  font-size: 2.1rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-family: var(--font-label);
+  font-size: .66rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.overview-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; }
+
+/* Quick-action "cards" - same button element/onclick handlers as before
+   (see index.html), just a softer rounded-card treatment instead of a
+   plain underlined text link, per the approved "quick-action/navigation
+   elements" rounded-treatment scope. */
+.quick-action-btn {
+  font-family: var(--font-label);
+  font-size: .78rem;
+  font-weight: 500;
+  letter-spacing: .03em;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s, background-color .15s, color .15s;
+}
+.quick-action-btn:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-hover); }
+.quick-action-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Cards ──────────────────────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border-radius: 3px;
+  padding: 28px;
+  box-shadow: none;
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.card h2 {
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 22px;
+}
+
+.card h3 {
+  font-family: var(--font-label);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+/* ── Two-column grid ────────────────────────────────────────────── */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* ── Form layout ────────────────────────────────────────────────── */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.three-col { grid-template-columns: 1fr 1fr 1fr; }
+.span-2    { grid-column: span 2; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-family: var(--font-label);
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: .9em;
+}
+
+input, select, textarea {
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 3px;
+  font-family: var(--font-sans);
+  font-size: .92rem;
+  color: var(--text);
+  background: #FDFCF9;
+  width: 100%;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+
+/* Custom dropdown arrow */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2377736C' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  background: #FFFFFF;
+}
+
+input::placeholder { color: var(--muted-light); font-size: .9rem; }
+
+/* Native file input — styled via ::file-selector-button only, no JS replacement.
+   Modern Chrome/Edge/Firefox support the unprefixed pseudo-element; Safari
+   needs the -webkit- alias. Older browsers fall back to the OS-native button,
+   which still works, just without the editorial border/type treatment. */
+input[type="file"] {
+  padding: 8px;
+  font-size: .85rem;
+  cursor: pointer;
+}
+
+input[type="file"]::file-selector-button,
+input[type="file"]::-webkit-file-upload-button {
+  padding: 7px 16px;
+  margin-right: 12px;
+  border: 1.5px solid var(--text);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-label);
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .18s, color .18s;
+}
+
+input[type="file"]:hover::file-selector-button,
+input[type="file"]:hover::-webkit-file-upload-button {
+  background: var(--text);
+  color: var(--card);
+}
+
+.hint {
+  font-size: .83rem;
+  color: var(--muted);
+  font-style: italic;
+  margin-bottom: 14px;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 11px 22px;
+  border: none;
+  border-radius: 2px;
+  font-family: var(--font-sans);
+  font-size: .88rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: background .18s, color .18s, box-shadow .18s, transform .1s;
+  text-decoration: none;
+}
+
+.btn:active { transform: scale(.97); }
+
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Editorial primary — thin border, transparent fill, inverts on hover */
+.btn-primary {
+  background: transparent;
+  color: var(--text);
+  border: 1.5px solid var(--text);
+  font-family: var(--font-label);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+.btn-primary:hover { background: var(--text); color: var(--card); box-shadow: var(--shadow-sm); }
+
+/* Editorial accent — outlined, inverts on hover (the one flagship CTA action) */
+.btn-gold {
+  background: transparent;
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+  font-family: var(--font-label);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+.btn-gold:hover { background: var(--accent); color: #F5F0E8; box-shadow: none; }
+
+/* Danger — tracked uppercase text link, no border/fill */
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border: none;
+  padding: 6px 4px;
+  font-family: var(--font-label);
+  font-size: .74rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(155,35,53,.4);
+}
+.btn-danger:hover  { color: #7A1B29; text-decoration-color: currentColor; }
+
+/* Ghost — tracked uppercase text link, no border/fill */
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  padding: 6px 4px;
+  font-family: var(--font-label);
+  font-size: .74rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--border);
+}
+.btn-ghost:hover   { color: var(--text); text-decoration-color: currentColor; }
+
+.w-full { width: 100%; margin-top: 4px; }
+
+/* Recommendation CTA */
+.btn-recommend {
+  padding: 13px 30px;
+  font-size: .83rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+/* ── Status messages ────────────────────────────────────────────── */
+.msg {
+  margin-top: 12px;
+  font-size: .84rem;
+  min-height: 20px;
+  border-radius: var(--radius-xs);
+}
+/* UI polish pass: a small tinted background + left border once a message
+   actually has content (the .ok/.err modifier is only ever applied by
+   showMsg() - see app.js - ; the bare, empty .msg above stays exactly as
+   before, no layout shift), so save/post/send confirmations and errors
+   read as a clear inline alert instead of easy-to-miss colored text. */
+.msg.ok, .msg.err {
+  padding: 8px 12px;
+  border-left: 3px solid currentColor;
+  font-weight: 500;
+}
+.msg.ok  { color: var(--success); background: rgba(45,106,79,.08); }
+.msg.err { color: var(--danger);  background: rgba(155,35,53,.08); }
+
+/* ── Item card grid ─────────────────────────────────────────────── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: 18px;
+}
+
+/* ── Individual item card ───────────────────────────────────────── */
+.item-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow .22s, transform .22s;
+}
+
+.item-card:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-3px);
+}
+
+.item-thumb {
+  width: 100%;
+  height: 140px;
+  background: linear-gradient(135deg, #F5EDE0 0%, #EAD9C4 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.8rem;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.item-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1;
+}
+
+.item-name {
+  font-weight: 600;
+  font-size: .96rem;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.item-color {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: .8rem;
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,.08);
+  flex-shrink: 0;
+}
+
+/* ── Color picker (curated shade grid) ───────────────────────────── */
+.color-picker {
+  position: relative;
+}
+
+.color-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 3px;
+  background: #FDFCF9;
+  font-family: var(--font-sans);
+  font-size: .92rem;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.color-picker-trigger:hover {
+  border-color: var(--accent);
+}
+
+.color-picker-trigger:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.color-picker-trigger-label {
+  flex: 1;
+}
+
+.color-picker-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  padding: 12px;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.color-picker-panel.hidden {
+  display: none;
+}
+
+.color-picker-group {
+  margin-bottom: 10px;
+}
+
+.color-picker-group:last-child {
+  margin-bottom: 0;
+}
+
+.color-picker-group-label {
+  font-family: var(--font-label);
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.color-picker-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.color-picker-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,.08);
+  cursor: pointer;
+  padding: 0;
+}
+
+.color-picker-swatch:hover {
+  transform: scale(1.12);
+}
+
+.color-picker-swatch.selected {
+  box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px var(--accent);
+}
+
+/* ── Multi-select (Style / Occasion) ─────────────────────────────── */
+.multi-select {
+  position: relative;
+}
+
+.multi-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  padding: 7px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 3px;
+  background: #FDFCF9;
+  font-family: var(--font-sans);
+  font-size: .92rem;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.multi-select-trigger:hover {
+  border-color: var(--accent);
+}
+
+.multi-select-trigger:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.multi-select-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  flex: 1;
+}
+
+.multi-select-placeholder {
+  color: var(--muted-light);
+}
+
+.multi-select-caret {
+  color: var(--muted);
+  font-size: .7rem;
+  flex-shrink: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 5px 2px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-label);
+  font-size: .7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+
+.chip-remove {
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: .95rem;
+  line-height: 1;
+  padding: 2px;
+}
+
+.chip-remove:hover {
+  color: var(--danger);
+}
+
+.multi-select-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  padding: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.multi-select-panel.hidden {
+  display: none;
+}
+
+.multi-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: .88rem;
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+}
+
+.multi-select-option:hover {
+  background: var(--border-light);
+}
+
+/* Overrides the global input{width:100%;padding:10px 14px;border:...}
+   form-control rule, which was otherwise blowing each checkbox up to the
+   full row width and pushing it (and the label after it) toward the
+   center/right instead of sitting as a normal small checkbox at the left
+   edge. */
+.multi-select-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid var(--border);
+  background: #FDFCF9;
+  accent-color: var(--accent);
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+/* Badge base (clothing type) */
+.badge          { background: #F0E8DC; color: #7A6548; font-size: .65rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: capitalize; letter-spacing: .03em; }
+.badge.season   { background: #E2EDE5; color: #2D6343; }
+.badge.occasion { background: #E5EBF4; color: #2B3F70; }
+.badge.style    { background: #F0E5E5; color: #7A2D2D; }
+
+.item-actions {
+  padding: 0 16px 14px;
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Wardrobe item cards — editorial catalog restyle ───────────────
+   Scoped to #wardrobe-grid only: .item-card / .badge / etc. are the
+   same classes used by the Recommendation (#rec-grid) and Saved
+   Outfits sections, which stay untouched at this step. ──────────── */
+#wardrobe-grid .item-card {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-xs);
+  transition: border-color .2s, box-shadow .2s, transform .18s;
+}
+
+#wardrobe-grid .item-card:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+#wardrobe-grid .item-thumb {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+#wardrobe-grid .item-name {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 1.02rem;
+  letter-spacing: .01em;
+}
+
+#wardrobe-grid .item-color {
+  font-family: var(--font-meta);
+  font-style: italic;
+  font-size: .92rem;
+}
+
+#wardrobe-grid .badges {
+  gap: 0;
+}
+
+#wardrobe-grid .badge {
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: .62rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  padding: 0;
+  border-radius: 0;
+  text-transform: uppercase;
+}
+
+#wardrobe-grid .badge:not(:last-child)::after {
+  content: "\00B7";
+  display: inline-block;
+  margin: 0 7px;
+  color: var(--muted-light);
+  font-weight: 400;
+}
+
+/* Single highlighted metadatum — clothing type carries the accent */
+#wardrobe-grid .badge:first-child {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+#wardrobe-grid .item-actions {
+  border-top: 1px solid var(--border-light);
+  margin-top: 4px;
+  padding-top: 10px;
+}
+
+/* ── Image preview (add/edit forms) ─────────────────────────────── */
+.image-preview {
+  margin-top: 10px;
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+/* ── Edit item modal ─────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 36, 62, .55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+/* UI polish pass: a brief fade+scale-in every time a modal is shown.
+   Needs no JS change - app.js/outfit-builder.js only ever toggle the
+   .hidden class (display:none), and a CSS animation on an element
+   restarts automatically each time it goes from display:none back to
+   displayed, exactly the same "pure CSS, no transitionend/animationend
+   listener required" guarantee the wardrobe-intro overlay already
+   relies on (see that block's own comment above). */
+.modal-overlay:not(.hidden) { animation: modal-overlay-fade .16s ease; }
+.modal-overlay:not(.hidden) .modal-card { animation: modal-card-in .18s cubic-bezier(.2,.7,.4,1); }
+
+@keyframes modal-overlay-fade {
+  from { background: rgba(23, 36, 62, 0); }
+  to   { background: rgba(23, 36, 62, .55); }
+}
+@keyframes modal-card-in {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay:not(.hidden),
+  .modal-overlay:not(.hidden) .modal-card { animation: none; }
+}
+
+.modal-card {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  padding: 26px 28px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.modal-header h3 {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.modal-close:hover { color: var(--text); }
+.modal-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* ── Empty state ────────────────────────────────────────────────── */
+.empty-state {
+  background: var(--card);
+  border-radius: 3px;
+  border: 1px dashed var(--border);
+  padding: 64px 24px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.empty-icon {
+  font-size: 1.4rem;
+  color: var(--accent);
+  margin-bottom: 16px;
+  letter-spacing: -.05em;
+  opacity: .85;
+}
+
+.empty-title {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 8px;
+  letter-spacing: .01em;
+}
+
+.empty-sub {
+  font-family: var(--font-meta);
+  font-style: italic;
+  font-size: .95rem;
+  color: var(--muted);
+}
+
+/* ── Recommendation result panel — demo/presentation visual-direction
+   pass ─────────────────────────────────────────────────────────────
+   The presentation's dark recommendation card is called out as an
+   important visual anchor: the WHOLE panel is now a warm-charcoal card
+   (not just a header strip - it previously had a dark navy gradient
+   header on an otherwise plain white panel), light text throughout, a
+   sage accent rule. The outfit items rendered inside (#rec-preview, via
+   the shared outfit-builder.js::renderOutfitFlatLay) already render as
+   light "tiles" via .flatlay-region's own light background - see that
+   rule - so they read correctly as light tiles on a dark card with no
+   change needed there.
+
+   Every override below that would otherwise touch a class shared with
+   another surface (.hint, .btn-primary, .btn-ghost, .msg,
+   .shop-suggestions-label - also used by the light-themed Outfit
+   Builder modal) is deliberately scoped under `.rec-panel ...` so only
+   this one panel is affected - per the approved scope reduction, this
+   pass does not restyle item-card/flatlay/shop-card rules globally. */
+.rec-panel {
+  background: var(--demo-dark);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--demo-dark);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.rec-panel-header {
+  padding: 22px 28px 18px;
+  border-bottom: 1px solid rgba(245,240,232,.14);
+}
+
+.rec-panel-label {
+  font-family: var(--font-label);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.rec-missing {
+  font-family: var(--font-meta);
+  font-size: .92rem;
+  color: #8A5A00;
+  background: #FFF6E5;
+  padding: 12px 28px;
+  line-height: 1.5;
+}
+
+.rec-panel .rec-missing { margin: 0 28px 4px; border-radius: var(--radius-sm); }
+
+/* Catalog (crawler) shop suggestions */
+.rec-shop-suggestions {
+  padding: 12px 28px 0;
+}
+
+.rec-panel .shop-suggestions-label { color: rgba(245,240,232,.68); }
+
+/* The same product cards inside the Outfit Builder modal, which
+   supplies its own horizontal padding - only the separating rule and
+   top spacing differ from the Dashboard placement above. */
+.builder-shop-suggestions {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-light);
+}
+
+.shop-suggestions-group + .shop-suggestions-group {
+  margin-top: 14px;
+}
+
+.shop-suggestions-label {
+  font-family: var(--font-meta);
+  font-size: .82rem;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.shop-suggestions-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.shop-card {
+  flex: 0 0 auto;
+  width: 120px;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--surface, #fff);
+}
+
+.shop-card img {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.shop-card-name {
+  font-size: .78rem;
+  line-height: 1.3;
+  max-height: 2.6em;
+  overflow: hidden;
+}
+
+.shop-card-price {
+  font-size: .78rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+#rec-preview {
+  padding: 26px 28px;
+}
+
+.rec-feedback-block {
+  padding: 0 28px 20px;
+  border-top: 1px solid rgba(245,240,232,.14);
+  padding-top: 20px;
+}
+
+.rec-save-block {
+  padding: 0 28px 24px;
+  border-top: 1px solid rgba(245,240,232,.14);
+  padding-top: 20px;
+}
+
+.rec-save-row {
+  display: flex;
+  gap: 10px;
+}
+
+/* Legibility on the now-dark panel background for otherwise
+   light-surface-assuming shared classes - scoped so nothing outside
+   .rec-panel is affected (the Outfit Builder modal, saved outfits, etc.
+   keep their existing light-panel treatment of these same classes). */
+.rec-panel .hint { color: rgba(245,240,232,.62); }
+.rec-panel .field label { color: rgba(245,240,232,.55); }
+
+.rec-panel .btn-primary {
+  border-color: var(--text-inv);
+  color: var(--text-inv);
+}
+.rec-panel .btn-primary:hover { background: var(--text-inv); color: var(--demo-dark); }
+
+.rec-panel .btn-ghost {
+  color: rgba(245,240,232,.72);
+  text-decoration-color: rgba(245,240,232,.32);
+}
+.rec-panel .btn-ghost:hover { color: var(--text-inv); text-decoration-color: currentColor; }
+
+.rec-panel .msg.ok  { background: rgba(127,159,112,.22); color: #C8E0BE; }
+.rec-panel .msg.err { background: rgba(213,110,122,.22); color: #F0B9C0; }
+
+#rec-grid .badge:not(:last-child)::after {
+  content: "\00B7";
+  display: inline-block;
+  margin: 0 7px;
+  color: var(--muted-light);
+  font-weight: 400;
+}
+
+/* Single highlighted metadatum — clothing type carries the accent */
+#rec-grid .badge:first-child {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Saved Outfits ──────────────────────────────────────────────── */
+.outfit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 18px;
+}
+
+.outfit-card {
+  background: var(--card);
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  box-shadow: none;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color .2s, transform .18s;
+}
+
+.outfit-card:hover {
+  border-color: var(--accent);
+  box-shadow: none;
+  transform: translateY(-2px);
+}
+
+.outfit-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.outfit-name {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.outfit-date {
+  font-family: var(--font-label);
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted-light);
+  white-space: nowrap;
+  padding-top: 4px;
+}
+
+.outfit-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.outfit-item-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 5px 11px 5px 7px;
+  font-size: .78rem;
+  color: var(--text);
+}
+
+.chip-emoji { font-size: .95rem; }
+
+/* Saved-outfit metadata badges — same editorial text-with-dot-separator
+   treatment as the wardrobe/recommendation badges, scoped to
+   #saved-outfits-grid since .badge is shared with those sections. */
+#saved-outfits-grid .badges {
+  gap: 0;
+}
+
+#saved-outfits-grid .badge {
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: .62rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  padding: 0;
+  border-radius: 0;
+  text-transform: uppercase;
+}
+
+#saved-outfits-grid .badge:not(:last-child)::after {
+  content: "\00B7";
+  display: inline-block;
+  margin: 0 7px;
+  color: var(--muted-light);
+  font-weight: 400;
+}
+
+#saved-outfits-grid .badge:first-child {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.outfit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+/* ── Outfit feedback ────────────────────────────────────────────── */
+.btn-sm { padding: 6px 12px; font-size: .76rem; }
+
+.feedback-block {
+  border-top: 1px solid var(--border-light);
+  padding-top: 12px;
+}
+
+.feedback-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.feedback-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.star-display .star { color: var(--border); font-size: 1.02rem; }
+.star-display .star.filled { color: var(--gold); }
+
+.feedback-comment {
+  font-family: var(--font-meta);
+  font-size: .95rem;
+  color: var(--muted);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.feedback-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.star-rating { display: flex; gap: 4px; }
+
+.star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--border);
+  transition: color .15s, transform .1s;
+}
+
+.star-btn:hover  { transform: scale(1.12); }
+.star-btn.filled { color: var(--gold); }
+
+.feedback-textarea {
+  resize: vertical;
+  min-height: 56px;
+  font-family: var(--font-sans);
+}
+
+.feedback-form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Explore / Messages / Notifications / AI Chat ──────────────────
+   Brings the forum, DM, and
+   notification surfaces up to the same editorial language already
+   established for wardrobe/recommendation/outfits/auth above (radius:3px,
+   thin borders instead of shadows, serif for names/titles, uppercase
+   label-style metadata, accent used sparingly, hover border-color
+   transitions) - closing the gap the previous "deliberately minimal, not
+   the final design pass" note left open. Every class name is unchanged
+   from before - only declarations, so no JS template string needed to
+   change. ─────────────────────────────────────────────────────────── */
+
+/* Nav tabs (Dashboard / Explore / Messages / AI Chat) */
+.nav-tabs { display: flex; gap: 2px; }
+.nav-tab {
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-xs);
+  padding: 8px 14px;
+  font-family: var(--font-label);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, background-color .15s;
+}
+.nav-tab:hover { color: var(--text); background: var(--surface-sunk); }
+/* Demo/presentation visual-direction pass: active nav item reads as a
+   quiet pale-sage pill (background + darker sage text) instead of a
+   colored underline - border-bottom-color kept transparent (not removed
+   from the rule) so the element's box height never shifts on state
+   change. */
+.nav-tab.active {
+  color: var(--accent-hover);
+  background: var(--accent-soft);
+  border-bottom-color: transparent;
+  border-radius: var(--radius-sm);
+}
+.nav-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Notification bell */
+.bell-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 6px;
+  line-height: 1;
+  transition: background-color .15s;
+}
+.bell-btn:hover { background: var(--surface-sunk); }
+.bell-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bell-badge {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  background: var(--accent);
+  color: #fff;
+  font-size: .6rem;
+  font-weight: 700;
+  border-radius: 20px;
+  padding: 1px 5px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1.3;
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+/* Post / comment cards — the forum feed reads as a considered editorial
+   feed, not a CRUD listing. */
+.post-card {
+  background: var(--card);
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  padding: 24px;
+  margin-bottom: 16px;
+  transition: border-color .18s;
+}
+.post-card:hover { border-color: var(--muted-light); }
+.post-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.post-author {
+  font-family: var(--font-label);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.post-author.anonymous { font-style: italic; text-transform: none; letter-spacing: 0; font-weight: 500; }
+.post-date { font-family: var(--font-label); font-size: .68rem; letter-spacing: .04em; color: var(--muted-light); white-space: nowrap; }
+.post-title {
+  font-family: var(--font-serif);
+  font-size: 1.22rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+.post-body { font-size: .92rem; line-height: 1.65; white-space: pre-wrap; margin-bottom: 14px; }
+
+.post-attachments, .comment-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.post-attachments img, .comment-attachments img {
+  width: 112px;
+  height: 112px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.post-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Reaction buttons — shared by posts and comments */
+.reaction-btn {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 13px;
+  font-family: var(--font-sans);
+  font-size: .8rem;
+  cursor: pointer;
+  color: var(--muted);
+  transition: border-color .15s, color .15s, background-color .15s;
+}
+.reaction-btn:hover { border-color: var(--text); color: var(--text); background: var(--surface-sunk); }
+.reaction-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.reaction-btn.like.active { border-color: var(--success); color: var(--success); background: rgba(45,106,79,.08); }
+.reaction-btn.dislike.active { border-color: var(--danger); color: var(--danger); background: rgba(155,35,53,.06); }
+
+/* Comments (nested inside a post card) */
+.comments-block { margin-top: 16px; border-top: 1px solid var(--border-light); padding-top: 16px; }
+.comment-item { padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+.comment-item:last-child { border-bottom: none; padding-bottom: 0; }
+.comment-author {
+  font-family: var(--font-label);
+  font-size: .66rem;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.comment-body { font-size: .87rem; line-height: 1.55; margin-bottom: 6px; white-space: pre-wrap; }
+.comment-form { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.comment-form textarea { resize: vertical; min-height: 48px; }
+
+/* My Posts totals banner */
+.totals-banner { display: flex; gap: 16px; margin-bottom: 20px; }
+.totals-stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 16px 28px;
+  text-align: center;
+}
+.totals-value { font-family: var(--font-serif); font-size: 1.6rem; font-weight: 600; color: var(--text); }
+.totals-label {
+  font-family: var(--font-label);
+  font-size: .64rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+/* DM inbox — reads as a real conversation list, not a table. */
+.inbox-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 18px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  background: var(--card);
+  transition: border-color .15s, transform .15s;
+}
+.inbox-row:hover { border-color: var(--accent); transform: translateX(2px); }
+.inbox-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.inbox-username { font-family: var(--font-serif); font-weight: 600; font-size: .96rem; color: var(--text); }
+.inbox-time { font-family: var(--font-label); font-size: .68rem; letter-spacing: .04em; color: var(--muted-light); }
+
+/* DM thread */
+.thread-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.thread-header h3 { font-family: var(--font-serif); font-size: 1.1rem; font-weight: 600; }
+.thread-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 6px 4px;
+  margin-bottom: 14px;
+}
+
+/* Chat bubble base — shared by DM (#thread-messages) and AI Chat
+   (#chat-log). A slightly clipped corner on the "tail" side (asymmetric
+   radius) reads as a real messaging surface rather than a generic rounded
+   rectangle. */
+.dm-bubble {
+  max-width: 72%;
+  padding: 11px 15px;
+  border-radius: 15px;
+  font-size: .87rem;
+  line-height: 1.5;
+}
+/* Demo/presentation visual-direction pass: "mine" bubbles (both the real
+   DM thread and AI Chat's user-side messages, which share this class -
+   see chat.js's chatBubbleHtml) move from gold to a soft pale-sage
+   treatment; "theirs" (assistant/other participant) already reads as the
+   target "light neutral/white" and needs no change. */
+.dm-bubble.mine   { align-self: flex-end;   background: var(--demo-green-soft); color: var(--text); border-bottom-right-radius: 4px; }
+.dm-bubble.theirs { align-self: flex-start; background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.dm-bubble-attachments img { width: 100px; height: 100px; object-fit: cover; border-radius: 3px; margin-top: 6px; display: block; }
+.dm-bubble-time { font-family: var(--font-label); font-size: .62rem; letter-spacing: .03em; color: var(--muted-light); margin-top: 5px; }
+.thread-form { display: flex; flex-direction: column; gap: 8px; }
+.thread-form textarea { resize: vertical; min-height: 48px; }
+
+/* ── AI Chat ─────────────────────────────────────────────────────────
+   Scoped to #chat-log so the DM thread above is untouched. The assistant
+   voice gets a small "Stylist" label (generated content - no markup
+   change needed in chat.js) and a thin accent rule instead of a plain
+   border, so it reads as the app's own styling assistant rather than a
+   second inbox. */
+#chat-log { max-height: 480px; }
+
+#chat-log .dm-bubble.theirs {
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--gold);
+  position: relative;
+  padding-top: 18px;
+}
+
+#chat-log .dm-bubble.theirs::before {
+  content: "Stylist";
+  display: block;
+  font-family: var(--font-label);
+  font-size: .6rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--gold-hover);
+  margin-bottom: 4px;
+}
+
+#chat-log .dm-bubble.mine { border-bottom-right-radius: 4px; }
+
+/* Failed job */
+.dm-bubble.chat-bubble-error { background: var(--danger-light); color: var(--danger); border-left-color: var(--danger); }
+#chat-log .dm-bubble.chat-bubble-error::before { content: "Stylist \00B7 Error"; color: var(--danger); }
+
+/* Pending/processing job — a slow, restrained pulse, never a spinner that
+   competes with the text (see chat.js::setChatBubbleText). */
+.dm-bubble.chat-bubble-pending { color: var(--muted); font-style: italic; animation: chat-pending-pulse 1.6s ease-in-out infinite; }
+@keyframes chat-pending-pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .dm-bubble.chat-bubble-pending { animation: none; opacity: .8; }
+}
+
+/* Input bar — a pill-shaped row (textarea + circular send button) rather
+   than the stacked DM form, so the flagship AI surface feels distinct. */
+#chat-form {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 10px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 22px;
+  padding: 8px 8px 8px 18px;
+  transition: border-color .15s, box-shadow .15s;
+}
+#chat-form:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+#chat-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 0;
+  min-height: 24px;
+  max-height: 120px;
+  resize: none;
+}
+#chat-input:focus { outline: none; box-shadow: none; background: transparent; }
+#chat-send-btn {
+  flex-shrink: 0;
+  border-radius: 20px;
+  height: 44px;
+  padding: 0 24px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-label);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+#chat-send-btn:hover:not(:disabled) { background: var(--accent-hover); box-shadow: none; }
+#chat-send-btn:disabled { background: var(--border); color: var(--muted-light); opacity: 1; }
+
+#chat-empty {
+  text-align: center;
+  padding: 20px 12px;
+}
+
+/* Notification panel */
+.notification-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-xs);
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  font-size: .84rem;
+  transition: background-color .15s;
+}
+.notification-item:hover { background: var(--surface-sunk); }
+.notification-item:last-child { border-bottom: none; }
+.notification-item.unread { background: var(--accent-soft); font-weight: 600; }
+.notification-item.unread:hover { background: var(--accent-soft); }
+.notification-time { font-family: var(--font-label); font-size: .64rem; letter-spacing: .03em; color: var(--muted-light); white-space: nowrap; }
+
+/* Load more */
+.load-more-row { text-align: center; margin: 16px 0; }
+
+/* ── Utility ────────────────────────────────────────────────────── */
+.hidden { display: none !important; }
+
+/* UI polish pass: small, explicit, reusable classes for a handful of
+   one-off spots in index.html that previously used an inline
+   style="..." attribute for the exact same values - zero visual change,
+   just consistent with every other rule in this file living here
+   instead of scattered inline. */
+.field-tight            { margin-bottom: 14px; }
+.flex-row-sm            { display: flex; gap: 8px; }
+.modal-actions-spread   { justify-content: space-between; margin-bottom: 14px; }
+.mt-md                  { margin-top: 16px; }
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+
+/* Header/nav: at tablet width, the logo/user-bar row and the tab strip
+   split onto two rows rather than crowding or wrapping mid-tab. */
+@media (max-width: 860px) {
+  .header-row { flex-wrap: wrap; row-gap: 10px; }
+  .user-bar { flex-wrap: wrap; margin-left: auto; }
+  .nav-tabs {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+}
+
+@media (max-width: 700px) {
+  .two-col   { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .three-col { grid-template-columns: 1fr; }
+  .span-2    { grid-column: span 1; }
+
+  #hero-section  { min-height: 58vh; padding: 60px 20px; }
+  .hero-title    { font-size: 2.5rem; }
+
+  .auth-section  { padding: 48px 0 56px; }
+
+  .card          { padding: 20px; }
+
+  .rec-missing,
+  #rec-preview,
+  .rec-feedback-block,
+  .rec-save-block { padding-left: 20px; padding-right: 20px; }
+
+  .rec-save-row { flex-direction: column; }
+
+  .outfit-grid { grid-template-columns: 1fr; }
+
+  .section { margin-top: 40px; }
+
+  .dashboard-overview { margin-top: 24px; padding-bottom: 24px; }
+  .overview-body { flex-direction: column; align-items: stretch; }
+  .overview-stats { gap: 10px; }
+  .stat-tile { flex: 1; }
+  .overview-actions { justify-content: flex-start; }
+
+  /* Header reorg: the username is now the only way to reach Sign Out
+     (it opens the account dropdown), so - unlike before, when a separate
+     always-visible Sign Out button made hiding the username harmless -
+     it must stay visible and tappable at every width. Only its label
+     shrinks, so it keeps fitting next to the bell. */
+  .username { font-size: .68rem; padding: 6px 8px; }
+
+  .totals-banner { gap: 10px; }
+  .totals-stat { flex: 1; padding: 12px 10px; }
+
+  .post-card { padding: 18px; }
+
+  .dm-bubble { max-width: 84%; }
+
+  #chat-form { padding-left: 14px; }
+
+  .modal-card { padding: 20px; }
+  .modal-overlay { padding: 12px; }
+}
+
+/* ── Wardrobe Door Intro ─────────────────────────────────────────────
+   Fully deterministic — the door slide and overlay fade are pure CSS
+   @keyframes animations with fixed delays/durations. They start
+   automatically the moment the element renders (unlike transitions,
+   no JS class-toggle is required to trigger them), and
+   animation-fill-mode:forwards locks in the end state afterward.
+   app.js never listens for transitionend/animationend.
+   position:fixed removes the overlay from normal document flow
+   entirely, so its presence/removal can never shift or reflow the
+   header/hero/etc. underneath. The keyframes below are, on their own,
+   a pure-CSS guarantee that by ~2.4s the overlay is opacity:0,
+   visibility:hidden and pointer-events:none — the site becomes
+   accessible even if app.js fails to run at all. ─────────────────── */
+.wardrobe-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #F8F6F2;
+  overflow: hidden;
+  animation: wardrobe-intro-lifecycle 2.4s ease forwards;
+}
+
+@keyframes wardrobe-intro-lifecycle {
+  0%   { opacity: 1; visibility: visible; pointer-events: auto; }
+  17%  { pointer-events: none; }                    /* ~400ms — doors start moving, let clicks through */
+  79%  { opacity: 1; visibility: visible; }          /* ~1.9s  — doors have finished, hold before fading */
+  100% { opacity: 0; visibility: hidden; pointer-events: none; } /* ~2.4s — fully faded and inert */
+}
+
+.wardrobe-intro-door {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: #F8F6F2;
+  display: flex;
+}
+
+.wardrobe-intro-door--left {
+  left: 0;
+  justify-content: flex-end;
+  border-right: 1px solid #E6DDC8;
+  animation: wardrobe-intro-door-left 1.5s cubic-bezier(.65,0,.35,1) .4s forwards;
+}
+
+.wardrobe-intro-door--right {
+  right: 0;
+  justify-content: flex-start;
+  border-left: 1px solid #E6DDC8;
+  animation: wardrobe-intro-door-right 1.5s cubic-bezier(.65,0,.35,1) .4s forwards;
+}
+
+@keyframes wardrobe-intro-door-left  { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+@keyframes wardrobe-intro-door-right { from { transform: translateX(0); } to { transform: translateX(100%); } }
+
+.wardrobe-intro-handle {
+  align-self: center;
+  width: 4px;
+  height: 64px;
+  margin: 0 18px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #E4C98C 0%, #B8955A 50%, #E4C98C 100%);
+  box-shadow: 0 0 0 1px rgba(184,149,90,.25);
+}
+
+.wardrobe-intro-skip {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: transparent;
+  border: none;
+  font-family: var(--font-label);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--border);
+  cursor: pointer;
+  padding: 8px 10px;
+  transition: color .18s;
+  z-index: 1;
+}
+
+.wardrobe-intro-skip:hover         { color: var(--text); text-decoration-color: currentColor; }
+.wardrobe-intro-skip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Reduced motion: no animation at all — the overlay starts already
+   invisible and non-blocking, purely via CSS, independent of app.js
+   (app.js's sessionStorage/reducedMotion check also removes the node;
+   this is a second, independent guarantee). */
+@media (prefers-reduced-motion: reduce) {
+  .wardrobe-intro {
+    animation: none;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .wardrobe-intro-door--left,
+  .wardrobe-intro-door--right {
+    animation: none;
+  }
+}
+
+/* ── Outfit Builder + flat-lay visualization ────────────────────────
+   Shared between the Builder's live editable preview and (in read-only
+   mode) any future saved-outfit display - see outfit-builder.js. */
+
+.modal-card-wide { max-width: 760px; }
+
+/* A required field the AI left blank, flagged only after the user tries
+   to add that item - never prefilled with an invented default. */
+.field-invalid {
+  border-color: var(--danger) !important;
+}
+
+.flatlay-preview { margin-bottom: 18px; }
+
+.flatlay {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.flatlay-region {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  min-width: 120px;
+}
+
+.flatlay-region-label {
+  font-family: var(--font-label);
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.flatlay-region-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flatlay-tile {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+  background: linear-gradient(135deg, #F5EDE0 0%, #EAD9C4 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-light);
+}
+
+.flatlay-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.flatlay-tile-emoji { font-size: 1.5rem; }
+
+.flatlay-tile-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: var(--danger);
+  color: #fff;
+  font-size: .8rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flatlay-region-empty { display: flex; align-items: center; justify-content: center; }
+
+.flatlay-placeholder {
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--muted);
+  font-size: .78rem;
+  padding: 16px 12px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+
+.flatlay-placeholder:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ── Builder wardrobe picker ─────────────────────────────────────── */
+
+.builder-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 2px 2px 2px 0;
+}
+
+.builder-picker-region {
+  border-top: 1px solid var(--border-light);
+  padding-top: 12px;
+  transition: background-color .3s;
+}
+
+.builder-picker-region:first-child { border-top: none; padding-top: 0; }
+
+.builder-picker-region.emphasized {
+  background-color: var(--gold-light);
+  border-radius: var(--radius-sm);
+}
+
+.builder-picker-region-label {
+  font-family: var(--font-label);
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.builder-picker-subgroup-label {
+  font-size: .72rem;
+  color: var(--muted);
+  margin: 6px 0 4px;
+}
+
+.builder-picker-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.picker-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 74px;
+  padding: 6px;
+  background: var(--card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  text-align: center;
+}
+
+.picker-tile img { width: 40px; height: 40px; object-fit: cover; border-radius: var(--radius-xs); }
+.picker-tile-emoji { font-size: 1.4rem; }
+
+.picker-tile-name {
+  font-size: .65rem;
+  color: var(--muted);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.picker-tile.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.picker-tile.selected .picker-tile-name { color: var(--accent); font-weight: 600; }

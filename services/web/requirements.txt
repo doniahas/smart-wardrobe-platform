@@ -1,0 +1,37 @@
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+pymongo==4.7.2
+motor==3.4.0
+pydantic[email]==2.7.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
+python-multipart==0.0.9
+httpx==0.27.0
+pytest==8.2.0
+pytest-asyncio==0.23.6
+slowapi==0.1.9
+aiofiles==23.2.1
+mongomock-motor==0.0.36
+Pillow==10.4.0
+# Shared rate limiting: runtime dependency of slowapi's
+# `limits` backend for storage_uri="redis://..." (core/limiter.py) -
+# limits.storage.redis.RedisStorage lazily imports this itself and is
+# otherwise unusable with a redis:// URI. Version verified compatible with
+# slowapi==0.1.9's resolved limits dependency. Cross-replica delivery
+# (services/redis_client.py) reuses this same package's redis.asyncio submodule
+# (bundled since redis-py 4.2, no separate package) for the Pub/Sub
+# subscriber/publisher - a second, independent client, never shared with
+# slowapi/limits' own storage client (see redis_client.py's own comment).
+redis==8.1.0
+# Test-only: an in-memory, Redis-protocol-compatible fake server used by
+# test_rate_limiting_shared_storage.py to prove shared-counter
+# behavior, and test_live_broker_redis.py + conftest.py's `client` fixture
+# to prove/exercise cross-replica Pub/Sub delivery - all without
+# a real Redis process. The [lua] extra (pulls in `lupa`) is required, not
+# optional - limits' RedisStorage implements its rate-limit operations as
+# server-side Lua scripts (EVALSHA), and plain fakeredis (without [lua])
+# verified to raise "unknown command 'evalsha'" against those same
+# operations. fakeredis.aioredis (the async pub/sub stand-in) is
+# part of the same package/extra, not a separate dependency.
+fakeredis[lua]==2.37.1

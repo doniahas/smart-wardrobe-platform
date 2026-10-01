@@ -1,0 +1,43 @@
+# --- Secrets & environment ---------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# --- Python ------------------------------------------------------------------
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.venv/
+venv/
+
+# --- IDE / OS ----------------------------------------------------------------
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# --- Runtime data --------------------------------------------------------------
+# User-uploaded media (the ./services/web/uploads bind mount) and local
+# backup archives (scripts/backup_*.sh default to ./backups/) contain real
+# user data and must never be committed.
+uploads/
+media/
+backups/
+*.log
+
+# --- Local AI-assistant working material -------------------------------------
+# .claude/ is local, machine-specific AI working material (temporary
+# reports, scratch files, local settings) and is not part of the project.
+.claude/
+CLAUDE_OUTPUT*.md
+PUBLIC_PORTFOLIO_CLEANUP_REPORT*
+docs/progress/

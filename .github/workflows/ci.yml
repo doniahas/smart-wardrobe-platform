@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    name: Unit tests (${{ matrix.service }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [web, recommendation, llm, catalog]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: services/${{ matrix.service }}
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        working-directory: services/${{ matrix.service }}
+        env:
+          TESTING: "true"
+        run: pytest
+
+  docker-build:
+    name: Docker build (${{ matrix.service }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [web, recommendation, llm, catalog]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build ./services/${{ matrix.service }}
+
+  live-mongo-smoke:
+    name: MongoDB integration smoke test
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r services/web/requirements.txt
+
+      - name: Run live MongoDB smoke test
+        working-directory: tests/system
+        env:
+          MONGO_URI: mongodb://localhost:27017
+          TESTING: "true"
+        run: pytest test_live_mongo_smoke.py
